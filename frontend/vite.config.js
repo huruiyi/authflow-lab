@@ -11,11 +11,19 @@ export default defineConfig({
         changeOrigin: true,
         credentials: true
       },
-      '/oauth2': {
+      '^/oauth2/(authorize|token|jwks|device_authorization)(/.*)?$': {
         target: 'http://localhost:9000',
         changeOrigin: true
       },
-      '/login': {
+      '/userinfo': {
+        target: 'http://localhost:9000',
+        changeOrigin: true
+      },
+      '/resource': {
+        target: 'http://localhost:9000',
+        changeOrigin: true
+      },
+      '/.well-known': {
         target: 'http://localhost:9000',
         changeOrigin: true
       }

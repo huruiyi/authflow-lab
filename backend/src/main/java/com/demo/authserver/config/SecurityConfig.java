@@ -5,12 +5,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
@@ -20,7 +22,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
@@ -28,7 +33,8 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http,
+                                                                      JdbcUserDetailsManager userDetailsManager) throws Exception {
         org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers
                 .OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers
@@ -36,7 +42,32 @@ public class SecurityConfig {
 
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, server -> server.oidc(Customizer.withDefaults()))
+                .with(authorizationServerConfigurer, server -> server
+                        .oidc(oidc -> oidc.userInfoEndpoint(userInfo -> userInfo.userInfoMapper(context -> {
+                            String username = context.getAuthorization().getPrincipalName();
+                            UserDetails user = userDetailsManager.loadUserByUsername(username);
+                            Set<String> scopes = context.getAuthorization().getAuthorizedScopes();
+
+                            Map<String, Object> claims = new HashMap<>();
+                            claims.put("sub", username);
+                            claims.put("preferred_username", username);
+                            claims.put("name", "Demo User " + username);
+                            claims.put("updated_at", java.time.Instant.now().getEpochSecond());
+
+                            if (scopes.contains(OidcScopes.EMAIL)) {
+                                claims.put("email", username + "@demo.local");
+                                claims.put("email_verified", true);
+                            }
+                            if (scopes.contains(OidcScopes.PROFILE)) {
+                                claims.put("locale", "zh-CN");
+                                claims.put("zoneinfo", "Asia/Shanghai");
+                            }
+                            if (user.getAuthorities() != null) {
+                                claims.put("authorities", user.getAuthorities().stream().map(a -> a.getAuthority()).toList());
+                            }
+                            return new OidcUserInfo(claims);
+                        })))
+                )
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .defaultAuthenticationEntryPointFor(
@@ -50,7 +81,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize

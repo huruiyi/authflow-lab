@@ -70,7 +70,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await authApi.login(form.username, form.password)
-    router.push('/clients')
+    router.push('/flows')
   } catch (e) {
     error.value = e.response?.data?.error || '登录失败，请检查用户名和密码'
   } finally {

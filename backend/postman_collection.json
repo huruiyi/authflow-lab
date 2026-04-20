@@ -1,0 +1,243 @@
+{
+  "info": {
+    "name": "Spring Authorization Server Demo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Discovery",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/.well-known/openid-configuration"
+      }
+    },
+    {
+      "name": "JWK Set",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/oauth2/jwks"
+      }
+    },
+    {
+      "name": "Public Resource",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/resource/public"
+      }
+    },
+    {
+      "name": "Client Credentials Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.access_token) pm.collectionVariables.set('m2mAccessToken', json.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{m2mClientId}}", "type": "string" },
+            { "key": "password", "value": "{{m2mClientSecret}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "client_credentials", "type": "text" },
+            { "key": "scope", "value": "read write", "type": "text" }
+          ]
+        },
+        "url": "{{baseUrl}}/oauth2/token"
+      }
+    },
+    {
+      "name": "Read Resource with M2M Token",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{m2mAccessToken}}" }
+        ],
+        "url": "{{baseUrl}}/resource/read"
+      }
+    },
+    {
+      "name": "Write Resource with M2M Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{m2mAccessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"batchNo\": \"SYNC-001\",\n  \"operation\": \"inventory_update\",\n  \"source\": \"postman\"\n}"
+        },
+        "url": "{{baseUrl}}/resource/write"
+      }
+    },
+    {
+      "name": "Device Authorization",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.device_code) pm.collectionVariables.set('deviceCode', json.device_code);",
+              "if (json.user_code) pm.collectionVariables.set('userCode', json.user_code);",
+              "if (json.verification_uri) pm.collectionVariables.set('verificationUri', json.verification_uri);",
+              "if (json.verification_uri_complete) pm.collectionVariables.set('verificationUriComplete', json.verification_uri_complete);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{deviceClientId}}", "type": "string" },
+            { "key": "password", "value": "{{deviceClientSecret}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "client_id", "value": "{{deviceClientId}}", "type": "text" },
+            { "key": "scope", "value": "openid profile read", "type": "text" }
+          ]
+        },
+        "url": "{{baseUrl}}/oauth2/device_authorization"
+      }
+    },
+    {
+      "name": "Poll Device Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.access_token) pm.collectionVariables.set('userAccessToken', json.access_token);",
+              "if (json.refresh_token) pm.collectionVariables.set('refreshToken', json.refresh_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{deviceClientId}}", "type": "string" },
+            { "key": "password", "value": "{{deviceClientSecret}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "urn:ietf:params:oauth:grant-type:device_code", "type": "text" },
+            { "key": "device_code", "value": "{{deviceCode}}", "type": "text" },
+            { "key": "client_id", "value": "{{deviceClientId}}", "type": "text" }
+          ]
+        },
+        "url": "{{baseUrl}}/oauth2/token"
+      }
+    },
+    {
+      "name": "Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.access_token) pm.collectionVariables.set('userAccessToken', json.access_token);",
+              "if (json.refresh_token) pm.collectionVariables.set('refreshToken', json.refresh_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "refresh_token", "type": "text" },
+            { "key": "client_id", "value": "{{spaClientId}}", "type": "text" },
+            { "key": "refresh_token", "value": "{{refreshToken}}", "type": "text" }
+          ]
+        },
+        "url": "{{baseUrl}}/oauth2/token"
+      }
+    },
+    {
+      "name": "UserInfo",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{userAccessToken}}" }
+        ],
+        "url": "{{baseUrl}}/userinfo"
+      }
+    },
+    {
+      "name": "Profile Resource",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{userAccessToken}}" }
+        ],
+        "url": "{{baseUrl}}/resource/profile"
+      }
+    },
+    {
+      "name": "Token Info",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{userAccessToken}}" }
+        ],
+        "url": "{{baseUrl}}/resource/token-info"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9000" },
+    { "key": "spaClientId", "value": "spa-public-client" },
+    { "key": "m2mClientId", "value": "m2m-service-client" },
+    { "key": "m2mClientSecret", "value": "m2m-secret" },
+    { "key": "deviceClientId", "value": "device-flow-client" },
+    { "key": "deviceClientSecret", "value": "device-secret" },
+    { "key": "m2mAccessToken", "value": "" },
+    { "key": "deviceCode", "value": "" },
+    { "key": "userCode", "value": "" },
+    { "key": "verificationUri", "value": "" },
+    { "key": "verificationUriComplete", "value": "" },
+    { "key": "userAccessToken", "value": "" },
+    { "key": "refreshToken", "value": "" }
+  ]
+}

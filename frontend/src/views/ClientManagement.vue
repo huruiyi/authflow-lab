@@ -7,6 +7,7 @@
         <span class="title">OAuth2 Client 管理</span>
       </div>
       <div class="header-right">
+        <el-button size="small" @click="goFlows">OAuth2 场景演示</el-button>
         <span class="username">{{ username }}</span>
         <el-button type="default" size="small" @click="handleLogout">退出</el-button>
       </div>
@@ -289,6 +290,10 @@ async function handleDelete(row) {
       ElMessage.error('删除失败：' + (e.response?.data?.error || e.message))
     }
   }
+}
+
+function goFlows() {
+  router.push('/flows')
 }
 
 async function handleLogout() {

@@ -61,10 +61,10 @@ VALUES (
     NULL,
     '单页应用（SPA）',
     'none',
-    'authorization_code',
+    'authorization_code,refresh_token',
     'http://localhost:5173/callback',
     'http://localhost:5173',
-    'openid,profile,email,read',
+    'openid,profile,email,read,write',
     @cs_pkce,
     @ts_default
 );
