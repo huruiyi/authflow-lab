@@ -1,5 +1,6 @@
 package com.demo.authserver.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -17,6 +18,7 @@ import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -31,6 +33,12 @@ import java.util.Set;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Value("${app.allowed-origins}")
+    private String allowedOrigins;
+
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http,
@@ -43,6 +51,8 @@ public class SecurityConfig {
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, server -> server
+                        .deviceAuthorizationEndpoint(deviceAuthorization ->
+                                deviceAuthorization.verificationUri(trimTrailingSlash(appBaseUrl) + "/oauth2/device_verification"))
                         .oidc(oidc -> oidc.userInfoEndpoint(userInfo -> userInfo.userInfoMapper(context -> {
                             String username = context.getAuthorization().getPrincipalName();
                             UserDetails user = userDetailsManager.loadUserByUsername(username);
@@ -102,7 +112,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(List.of(allowedOrigins.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -124,5 +138,9 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    private String trimTrailingSlash(String value) {
+        return value != null && value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 }

@@ -21,9 +21,10 @@
         />
 
         <div v-else class="result-block">
-          <el-alert title="授权码兑换成功" type="success" show-icon :closable="false" />
+          <el-alert title="授权成功，已完成授权码兑换" type="success" show-icon :closable="false" />
 
           <el-descriptions :column="1" border class="desc">
+            <el-descriptions-item label="当前前端地址">{{ frontendOrigin }}</el-descriptions-item>
             <el-descriptions-item label="access_token">
               <div class="token-box">{{ tokenResult.access_token }}</div>
             </el-descriptions-item>
@@ -48,6 +49,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { oauth2Api } from '../api/oauth2'
 
 const route = useRoute()
@@ -55,6 +57,7 @@ const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const tokenResult = ref({})
+const frontendOrigin = window.location.origin
 
 onMounted(async () => {
   const code = route.query.code
@@ -104,6 +107,7 @@ onMounted(async () => {
     if (data.refresh_token) {
       sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
     }
+    ElMessage.success(`授权成功，已回到 ${window.location.origin}`)
   } catch (e) {
     error.value = e.response?.data?.error_description || e.response?.data?.error || e.message
   } finally {

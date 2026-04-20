@@ -62,8 +62,8 @@ VALUES (
     '单页应用（SPA）',
     'none',
     'authorization_code,refresh_token',
-    'http://localhost:5173/callback',
-    'http://localhost:5173',
+    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
+    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
     'openid,profile,email,read,write',
     @cs_pkce,
     @ts_default
@@ -197,8 +197,8 @@ VALUES (
     '综合测试客户端',
     'client_secret_basic,client_secret_post',
     'authorization_code,refresh_token,client_credentials,urn:ietf:params:oauth:grant-type:device_code',
-    'http://localhost:8080/callback,http://localhost:5173/callback,http://127.0.0.1/callback',
-    'http://localhost:8080,http://localhost:5173',
+    'http://localhost:8080/callback,http://localhost:5173/callback,http://127.0.0.1/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
+    'http://localhost:8080,http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
     'openid,profile,email,read,write',
     @cs_pkce_consent,
     @ts_default

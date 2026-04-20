@@ -181,6 +181,8 @@ import { authApi } from '../api/auth'
 import { oauth2Api } from '../api/oauth2'
 import { generatePkcePair, generateRandomString } from '../composables/pkce'
 
+const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:9000`
+
 const m2mClients = [
   {
     key: 'm2m-service-client-rw',
@@ -238,7 +240,6 @@ const m2mSelectedClient = computed(
 async function startPkceFlow() {
   const clientId = 'spa-public-client'
   const frontendOrigin = window.location.origin
-  const authServerOrigin = 'http://localhost:9000'
   const redirectUri = `${frontendOrigin}/callback`
   const state = generateRandomString(32)
   const { codeVerifier, codeChallenge } = await generatePkcePair()
@@ -468,7 +469,30 @@ async function pollDeviceToken() {
       currentScope.value = data.scope
       sessionStorage.setItem('oauth2_scope', data.scope)
     }
+    ElMessage.success('设备授权成功，已获取 Token')
   } catch (e) {
+    const errorCode = e.response?.data?.error
+    if (errorCode === 'authorization_pending') {
+      result.value = {
+        error: errorCode,
+        message: '用户还没有在 verification_uri 完成授权，请先完成授权后再继续轮询。',
+        verificationUri: deviceAuth.value.verification_uri,
+        verificationUriComplete: deviceAuth.value.verification_uri_complete,
+        userCode: deviceAuth.value.user_code,
+        interval: deviceAuth.value.interval
+      }
+      ElMessage.info('等待用户完成设备授权')
+      return
+    }
+    if (errorCode === 'slow_down') {
+      result.value = {
+        error: errorCode,
+        message: '轮询过快，请按返回的 interval 间隔后再试。',
+        interval: deviceAuth.value.interval
+      }
+      ElMessage.warning('轮询过快，请稍后再试')
+      return
+    }
     showError(e)
   }
 }

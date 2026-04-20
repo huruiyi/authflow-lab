@@ -82,4 +82,4 @@ CREATE TABLE IF NOT EXISTS authorities
     CONSTRAINT fk_authorities_users FOREIGN KEY (username) REFERENCES users (username)
 );
 
-CREATE INDEX ix_auth_username ON authorities (username, authority);
+-- CREATE INDEX ix_auth_username ON authorities (username, authority);
