@@ -1,5 +1,11 @@
 import axios from 'axios'
 
+function redirectToLogin() {
+  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const params = new URLSearchParams({ returnTo })
+  window.location.href = `/login?${params.toString()}`
+}
+
 const http = axios.create({
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' }
@@ -9,7 +15,7 @@ http.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401) {
-      window.location.href = '/login'
+      redirectToLogin()
     }
     return Promise.reject(err)
   }

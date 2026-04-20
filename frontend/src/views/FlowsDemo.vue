@@ -173,8 +173,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Connection } from '@element-plus/icons-vue'
 import { authApi } from '../api/auth'
@@ -210,8 +210,9 @@ const m2mClients = [
   }
 ]
 
+const route = useRoute()
 const router = useRouter()
-const activeTab = ref('pkce')
+const activeTab = ref(route.query.tab === 'device' ? 'device' : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const refreshToken = ref(sessionStorage.getItem('oauth2_refresh_token') || '')
@@ -236,6 +237,16 @@ const prettyResult = computed(() => JSON.stringify(result.value, null, 2))
 const m2mSelectedClient = computed(
   () => m2mClients.find(client => client.key === m2mForm.selectedClientKey) || m2mClients[0]
 )
+
+watch(activeTab, (tab) => {
+  const nextQuery = { ...route.query }
+  if (tab === 'device') {
+    nextQuery.tab = 'device'
+  } else {
+    delete nextQuery.tab
+  }
+  router.replace({ query: nextQuery })
+})
 
 async function startPkceFlow() {
   const clientId = 'spa-public-client'
@@ -433,6 +444,7 @@ async function callWriteWithM2m() {
 async function startDeviceFlow() {
   try {
     const basic = btoa(`${deviceForm.clientId}:${deviceForm.clientSecret}`)
+    sessionStorage.setItem('oauth2_device_return_to', '/flows?tab=device')
     const { data } = await oauth2Api.deviceAuthorize({
       client_id: deviceForm.clientId,
       scope: deviceForm.scope
@@ -511,7 +523,7 @@ function goClients() {
 
 function showError(e) {
   result.value = e.response?.data || { error: e.message }
-  ElMessage.error(e.response?.data?.error || e.message)
+  ElMessage.error(e.response?.data?.error_description || e.response?.data?.error || e.message)
 }
 </script>
 

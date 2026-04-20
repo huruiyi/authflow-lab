@@ -40,6 +40,7 @@
             登 录
           </el-button>
         </el-form-item>
+        <el-alert v-if="returnToLabel" :title="returnToLabel" type="info" show-icon :closable="false" class="return-alert" />
         <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
       </el-form>
     </el-card>
@@ -47,11 +48,12 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, reactive } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Lock, User, Key } from '@element-plus/icons-vue'
 import { authApi } from '../api/auth'
 
+const route = useRoute()
 const router = useRouter()
 const formRef = ref(null)
 const loading = ref(false)
@@ -63,6 +65,9 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+const returnTo = computed(() => normalizeReturnTo(route.query.returnTo))
+const returnToLabel = computed(() => returnTo.value ? `登录成功后将返回 ${returnTo.value}` : '')
+
 async function handleLogin() {
   error.value = ''
   const valid = await formRef.value?.validate().catch(() => false)
@@ -70,12 +75,17 @@ async function handleLogin() {
   loading.value = true
   try {
     await authApi.login(form.username, form.password)
-    router.push('/flows')
+    await router.push(returnTo.value || '/flows')
   } catch (e) {
     error.value = e.response?.data?.error || '登录失败，请检查用户名和密码'
   } finally {
     loading.value = false
   }
+}
+
+function normalizeReturnTo(value) {
+  if (typeof value !== 'string' || !value.startsWith('/')) return ''
+  return value.startsWith('//') ? '' : value
 }
 </script>
 
@@ -99,5 +109,8 @@ async function handleLogin() {
   margin: 0;
   font-size: 20px;
   color: #303133;
+}
+.return-alert {
+  margin-bottom: 18px;
 }
 </style>

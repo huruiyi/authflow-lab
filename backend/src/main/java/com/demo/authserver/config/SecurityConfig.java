@@ -39,6 +39,8 @@ public class SecurityConfig {
     @Value("${app.base-url}")
     private String appBaseUrl;
 
+        private static final String DEVICE_VERIFICATION_PAGE = "/activate";
+
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http,
@@ -51,8 +53,12 @@ public class SecurityConfig {
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, server -> server
+                        .authorizationEndpoint(authorization -> authorization
+                                .consentPage("/oauth2/consent"))
                         .deviceAuthorizationEndpoint(deviceAuthorization ->
-                                deviceAuthorization.verificationUri(trimTrailingSlash(appBaseUrl) + "/oauth2/device_verification"))
+                                deviceAuthorization.verificationUri(trimTrailingSlash(appBaseUrl) + DEVICE_VERIFICATION_PAGE))
+                        .deviceVerificationEndpoint(deviceVerification -> deviceVerification
+                                .consentPage(DEVICE_VERIFICATION_PAGE))
                         .oidc(oidc -> oidc.userInfoEndpoint(userInfo -> userInfo.userInfoMapper(context -> {
                             String username = context.getAuthorization().getPrincipalName();
                             UserDetails user = userDetailsManager.loadUserByUsername(username);
