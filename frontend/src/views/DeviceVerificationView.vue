@@ -20,7 +20,11 @@
         class="mb16"
       />
 
-      <el-descriptions :column="1" border class="mb16">
+      <div v-if="success" class="success-state">
+        <p class="success-text">设备授权已经完成，设备端现在可以继续轮询 token 端点获取访问令牌。</p>
+      </div>
+
+      <el-descriptions v-else :column="1" border class="mb16">
         <el-descriptions-item label="client_id">{{ clientDisplayText }}</el-descriptions-item>
         <el-descriptions-item label="user_code">{{ userCode || '缺失' }}</el-descriptions-item>
         <el-descriptions-item label="scope">
@@ -62,9 +66,9 @@ const route = useRoute()
 const router = useRouter()
 const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:30000`
 const submitting = ref(false)
-const success = ref(false)
-const message = ref('')
-const messageType = ref('info')
+const success = ref(hasSuccessFlag(route.query.success))
+const message = ref(success.value ? '设备授权已提交成功，现在可以回到先前页面继续查看轮询结果。' : '')
+const messageType = ref(success.value ? 'success' : 'info')
 const clientId = computed(() => getSingleValue(route.query.client_id))
 const state = computed(() => getSingleValue(route.query.state))
 const userCode = computed(() => getSingleValue(route.query.user_code))
@@ -188,6 +192,11 @@ function normalizeReturnTo(value) {
   if (typeof value !== 'string' || !value.startsWith('/')) return ''
   return value.startsWith('//') ? '' : value
 }
+
+function hasSuccessFlag(value) {
+  if (Array.isArray(value)) return value.some(hasSuccessFlag)
+  return value === '' || value === 'true' || value === '1' || value === 'success'
+}
 </script>
 
 <style scoped>
@@ -219,6 +228,18 @@ function normalizeReturnTo(value) {
 }
 .mb16 {
   margin-bottom: 16px;
+}
+.success-state {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: #f0f9eb;
+  border: 1px solid #c2e7b0;
+}
+.success-text {
+  margin: 0;
+  color: #2f5d24;
+  line-height: 1.6;
 }
 .scope-list {
   display: flex;

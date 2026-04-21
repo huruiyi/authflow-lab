@@ -128,7 +128,12 @@
 
           <div class="actions-row">
             <el-button type="primary" @click="startDeviceFlow">申请 Device Code</el-button>
-            <el-button type="success" :disabled="!deviceAuth.device_code" @click="pollDeviceToken">轮询 Token</el-button>
+            <el-button
+              type="success"
+              :disabled="!deviceAuth.device_code || isPollingDeviceToken"
+              :loading="isPollingDeviceToken"
+              @click="pollDeviceToken"
+            >{{ isPollingDeviceToken ? '轮询中...' : '轮询 Token' }}</el-button>
           </div>
 
           <el-card shadow="never" class="mt16">
@@ -173,7 +178,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Connection } from '@element-plus/icons-vue'
@@ -219,6 +224,11 @@ const refreshToken = ref(sessionStorage.getItem('oauth2_refresh_token') || '')
 const currentScope = ref(sessionStorage.getItem('oauth2_scope') || '')
 const m2mToken = ref('')
 const deviceAuth = ref({})
+const isPollingDeviceToken = ref(false)
+let devicePollingAborted = false
+
+const DEVICE_POLLING_TIMEOUT_MS = 2 * 60 * 1000
+const DEFAULT_DEVICE_INTERVAL_SECONDS = 5
 
 const m2mForm = reactive({
   selectedClientKey: m2mClients[0].key,
@@ -246,6 +256,10 @@ watch(activeTab, (tab) => {
     delete nextQuery.tab
   }
   router.replace({ query: nextQuery })
+})
+
+onBeforeUnmount(() => {
+  devicePollingAborted = true
 })
 
 async function startPkceFlow() {
@@ -443,6 +457,8 @@ async function callWriteWithM2m() {
 
 async function startDeviceFlow() {
   try {
+    devicePollingAborted = false
+    isPollingDeviceToken.value = false
     const basic = btoa(`${deviceForm.clientId}:${deviceForm.clientSecret}`)
     sessionStorage.setItem('oauth2_device_return_to', '/flows?tab=device')
     const { data } = await oauth2Api.deviceAuthorize({
@@ -459,53 +475,81 @@ async function startDeviceFlow() {
 }
 
 async function pollDeviceToken() {
+  if (!deviceAuth.value.device_code || isPollingDeviceToken.value) return
+
+  isPollingDeviceToken.value = true
+  devicePollingAborted = false
+  const startedAt = Date.now()
+  let waitMs = getDevicePollingIntervalMs(deviceAuth.value.interval)
+
   try {
-    const basic = btoa(`${deviceForm.clientId}:${deviceForm.clientSecret}`)
-    const { data } = await oauth2Api.pollDeviceToken({
-      grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-      device_code: deviceAuth.value.device_code,
-      client_id: deviceForm.clientId
-    }, {
-      Authorization: `Basic ${basic}`
-    })
-    result.value = data
-    if (data.access_token) {
-      accessToken.value = data.access_token
-      sessionStorage.setItem('oauth2_access_token', data.access_token)
-    }
-    if (data.refresh_token) {
-      refreshToken.value = data.refresh_token
-      sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
-    }
-    if (data.scope) {
-      currentScope.value = data.scope
-      sessionStorage.setItem('oauth2_scope', data.scope)
-    }
-    ElMessage.success('设备授权成功，已获取 Token')
-  } catch (e) {
-    const errorCode = e.response?.data?.error
-    if (errorCode === 'authorization_pending') {
-      result.value = {
-        error: errorCode,
-        message: '用户还没有在 verification_uri 完成授权，请先完成授权后再继续轮询。',
-        verificationUri: deviceAuth.value.verification_uri,
-        verificationUriComplete: deviceAuth.value.verification_uri_complete,
-        userCode: deviceAuth.value.user_code,
-        interval: deviceAuth.value.interval
+    while (!devicePollingAborted) {
+      const basic = btoa(`${deviceForm.clientId}:${deviceForm.clientSecret}`)
+      try {
+        const { data } = await oauth2Api.pollDeviceToken({
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          device_code: deviceAuth.value.device_code,
+          client_id: deviceForm.clientId
+        }, {
+          Authorization: `Basic ${basic}`
+        })
+        result.value = data
+        if (data.access_token) {
+          accessToken.value = data.access_token
+          sessionStorage.setItem('oauth2_access_token', data.access_token)
+        }
+        if (data.refresh_token) {
+          refreshToken.value = data.refresh_token
+          sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
+        }
+        if (data.scope) {
+          currentScope.value = data.scope
+          sessionStorage.setItem('oauth2_scope', data.scope)
+        }
+        ElMessage.success('设备授权成功，已获取 Token')
+        return
+      } catch (e) {
+        const errorCode = e.response?.data?.error
+        if (errorCode === 'authorization_pending') {
+          result.value = {
+            error: errorCode,
+            message: '用户还没有在 verification_uri 完成授权，系统会持续轮询直到获取结果或 2 分钟超时。',
+            verificationUri: deviceAuth.value.verification_uri,
+            verificationUriComplete: deviceAuth.value.verification_uri_complete,
+            userCode: deviceAuth.value.user_code,
+            interval: deviceAuth.value.interval,
+            timeoutSeconds: DEVICE_POLLING_TIMEOUT_MS / 1000
+          }
+        } else if (errorCode === 'slow_down') {
+          waitMs += 5000
+          result.value = {
+            error: errorCode,
+            message: '服务端要求降低轮询频率，系统会自动放慢重试。',
+            interval: Math.ceil(waitMs / 1000)
+          }
+        } else {
+          showError(e)
+          return
+        }
       }
-      ElMessage.info('等待用户完成设备授权')
-      return
-    }
-    if (errorCode === 'slow_down') {
-      result.value = {
-        error: errorCode,
-        message: '轮询过快，请按返回的 interval 间隔后再试。',
-        interval: deviceAuth.value.interval
+
+      if (Date.now() - startedAt >= DEVICE_POLLING_TIMEOUT_MS) {
+        result.value = {
+          error: 'polling_timeout',
+          message: '2 分钟内仍未获取到设备授权结果，请确认用户是否已完成授权，然后重新点击轮询。',
+          verificationUri: deviceAuth.value.verification_uri,
+          verificationUriComplete: deviceAuth.value.verification_uri_complete,
+          userCode: deviceAuth.value.user_code,
+          interval: Math.ceil(waitMs / 1000)
+        }
+        ElMessage.warning('设备码轮询已超时，请重新发起或再次轮询')
+        return
       }
-      ElMessage.warning('轮询过快，请稍后再试')
-      return
+
+      await delay(waitMs)
     }
-    showError(e)
+  } finally {
+    isPollingDeviceToken.value = false
   }
 }
 
@@ -524,6 +568,20 @@ function goClients() {
 function showError(e) {
   result.value = e.response?.data || { error: e.message }
   ElMessage.error(e.response?.data?.error_description || e.response?.data?.error || e.message)
+}
+
+function getDevicePollingIntervalMs(intervalSeconds) {
+  const parsedInterval = Number(intervalSeconds)
+  const safeInterval = Number.isFinite(parsedInterval) && parsedInterval > 0
+    ? parsedInterval
+    : DEFAULT_DEVICE_INTERVAL_SECONDS
+  return safeInterval * 1000
+}
+
+function delay(ms) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, ms)
+  })
 }
 </script>
 

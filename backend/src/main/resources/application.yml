@@ -1,5 +1,8 @@
 server:
   port: 30000
+  servlet:
+    session:
+      timeout: 1d
 
 app:
   base-url: http://192.168.0.108:30000

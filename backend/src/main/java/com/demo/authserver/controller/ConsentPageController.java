@@ -55,6 +55,13 @@ public class ConsentPageController {
                 .build();
     }
 
+    @GetMapping(value = "/", params = "success")
+    public ResponseEntity<Void> deviceVerificationSuccess(@RequestParam MultiValueMap<String, String> queryParams) {
+        return ResponseEntity.status(302)
+                .header(HttpHeaders.LOCATION, buildFrontendUrl("/device-verification", queryParams, null))
+                .build();
+    }
+
     private MultiValueMap<String, String> enrichDeviceVerificationParams(MultiValueMap<String, String> queryParams) {
         LinkedMultiValueMap<String, String> enrichedParams = new LinkedMultiValueMap<>(queryParams);
         if (StringUtils.hasText(enrichedParams.getFirst(OAuth2ParameterNames.CLIENT_ID))) {
