@@ -54,5 +54,8 @@ export const oauth2Api = {
   }),
   callTokenInfo: token => jsonHttp.get('/resource/token-info', {
     headers: { Authorization: `Bearer ${token}` }
-  })
+  }),
+  listClients: () => jsonHttp.get('/api/clients'),
+  createClient: body => jsonHttp.post('/api/clients', body),
+  deleteClient: id => jsonHttp.delete(`/api/clients/${id}`)
 }

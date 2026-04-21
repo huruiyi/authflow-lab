@@ -105,7 +105,7 @@
 建议按下面顺序继续补齐：
 
 1. [x] Access Token 过期与 Refresh Token 轮换策略演示
-2. [ ] Dynamic Client Registration
+2. [x] Dynamic Client Registration
 3. [ ] Pushed Authorization Request（PAR）
 
 ## 5. 每项待实现的目的
