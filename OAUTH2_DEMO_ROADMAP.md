@@ -27,6 +27,10 @@
 - [x] Token Revocation Demo（基于 Client Credentials token）
 - [x] OIDC Logout / RP-Initiated Logout Demo
 
+### Claims / 身份差异能力
+
+- [x] JWT Claims 差异演示（用户 access_token / 用户 id_token / 机器 access_token）
+
 ## 2. 当前演示覆盖说明
 
 项目目前已经覆盖以下典型 OAuth2 / OIDC 学习路径：
@@ -40,6 +44,7 @@
 7. 资源访问鉴权：按 scope 访问不同资源
 8. Token 生命周期管理：Introspection / Revocation
 9. OIDC 会话退出：RP-Initiated Logout
+10. JWT Claims 差异对比：用户 token vs 机器 token vs id_token
 
 ## 3. OIDC Logout 与正常退出的区别
 
@@ -89,11 +94,11 @@
 建议按下面顺序继续补齐：
 
 1. [ ] JWT Claims 差异演示（用户 token vs 机器 token）
-2. [ ] Client 认证方式差异 Demo（client_secret_basic / client_secret_post / none）
-3. [ ] Authorization Code without PKCE 对比 Demo
-4. [ ] Access Token 过期与 Refresh Token 轮换策略演示
-5. [ ] Dynamic Client Registration
-6. [ ] Pushed Authorization Request（PAR）
+1. [ ] Client 认证方式差异 Demo（client_secret_basic / client_secret_post / none）
+2. [ ] Authorization Code without PKCE 对比 Demo
+3. [ ] Access Token 过期与 Refresh Token 轮换策略演示
+4. [ ] Dynamic Client Registration
+5. [ ] Pushed Authorization Request（PAR）
 
 ## 5. 每项待实现的目的
 

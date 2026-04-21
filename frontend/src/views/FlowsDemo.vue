@@ -153,7 +153,89 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="4. 场景说明" name="scenes">
+        <el-tab-pane label="4. JWT Claims 差异" name="claims">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
+            <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
+            <el-descriptions-item label="准备条件">先完成一次 PKCE 登录，再获取一次 Client Credentials token，下面的对比表才会完整</el-descriptions-item>
+          </el-descriptions>
+
+          <el-alert
+            class="mt16"
+            type="info"
+            show-icon
+            :closable="false"
+            title="id_token 更偏身份声明，access_token 更偏资源访问授权；client_credentials token 通常没有用户身份字段。"
+          />
+
+          <div class="actions-row">
+            <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
+          </div>
+
+          <el-row :gutter="16" class="mt16">
+            <el-col :xs="24" :md="8">
+              <el-card shadow="never">
+                <template #header><span>用户 Access Token</span></template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="状态">{{ decodedUserAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="sub">{{ summarizeClaim(decodedUserAccessToken?.payload?.sub) }}</el-descriptions-item>
+                  <el-descriptions-item label="scope">{{ summarizeClaim(decodedUserAccessToken?.payload?.scope) }}</el-descriptions-item>
+                  <el-descriptions-item label="client_id">{{ summarizeClaim(decodedUserAccessToken?.payload?.client_id) }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(accessToken) || '暂无' }}</div> </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-card shadow="never">
+                <template #header><span>用户 ID Token</span></template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="状态">{{ decodedIdToken ? '已获取' : '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="sub">{{ summarizeClaim(decodedIdToken?.payload?.sub) }}</el-descriptions-item>
+                  <el-descriptions-item label="aud">{{ summarizeClaim(decodedIdToken?.payload?.aud) }}</el-descriptions-item>
+                  <el-descriptions-item label="preferred_username">{{ summarizeClaim(decodedIdToken?.payload?.preferred_username) }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(idToken) || '暂无' }}</div> </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-card shadow="never">
+                <template #header><span>机器 Access Token</span></template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="状态">{{ decodedMachineAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="sub">{{ summarizeClaim(decodedMachineAccessToken?.payload?.sub) }}</el-descriptions-item>
+                  <el-descriptions-item label="scope">{{ summarizeClaim(decodedMachineAccessToken?.payload?.scope) }}</el-descriptions-item>
+                  <el-descriptions-item label="client_id">{{ summarizeClaim(decodedMachineAccessToken?.payload?.client_id) }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(m2mLifecycleToken) || '暂无' }}</div> </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>关键 Claims 对比</span></template>
+            <el-table :data="claimsComparisonRows" border empty-text="先获取用户 token 或 M2M token，再查看对比结果。">
+              <el-table-column prop="claim" label="Claim" min-width="180" />
+              <el-table-column prop="userAccessToken" label="用户 access_token" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="idToken" label="用户 id_token" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="machineAccessToken" label="机器 access_token" min-width="220" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>差异结论</span></template>
+            <el-alert
+              v-for="highlight in claimsHighlights"
+              :key="highlight"
+              class="mb16"
+              type="success"
+              show-icon
+              :closable="false"
+              :title="highlight"
+            />
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="5. 场景说明" name="scenes">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
               用户在 Vue 前端点击登录，跳转授权服务器，登录并授权后回调前端，前端使用 code + code_verifier 换取 token。
@@ -222,7 +304,7 @@ const m2mClients = [
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref(route.query.tab === 'device' ? 'device' : 'pkce')
+const activeTab = ref(['device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
@@ -258,13 +340,46 @@ const m2mLifecycleToken = computed(() => m2mToken.value || m2mLastIssuedToken.va
 
 watch(activeTab, (tab) => {
   const nextQuery = { ...route.query }
-  if (tab === 'device') {
+  if (['device', 'claims'].includes(tab)) {
     nextQuery.tab = 'device'
+    if (tab === 'claims') {
+      nextQuery.tab = 'claims'
+    }
   } else {
     delete nextQuery.tab
   }
   router.replace({ query: nextQuery })
 })
+
+const decodedUserAccessToken = computed(() => decodeJwt(accessToken.value))
+const decodedIdToken = computed(() => decodeJwt(idToken.value))
+const decodedMachineAccessToken = computed(() => decodeJwt(m2mLifecycleToken.value))
+const hasAnyJwtForComparison = computed(() => Boolean(
+  decodedUserAccessToken.value || decodedIdToken.value || decodedMachineAccessToken.value
+))
+const claimsComparisonRows = computed(() => {
+  const userClaims = decodedUserAccessToken.value?.payload || {}
+  const idClaims = decodedIdToken.value?.payload || {}
+  const machineClaims = decodedMachineAccessToken.value?.payload || {}
+
+  return [
+    buildClaimsRow('sub', userClaims.sub, idClaims.sub, machineClaims.sub),
+    buildClaimsRow('client_id', userClaims.client_id, idClaims.client_id, machineClaims.client_id),
+    buildClaimsRow('scope', userClaims.scope, idClaims.scope, machineClaims.scope),
+    buildClaimsRow('aud', userClaims.aud, idClaims.aud, machineClaims.aud),
+    buildClaimsRow('iss', userClaims.iss, idClaims.iss, machineClaims.iss),
+    buildClaimsRow('preferred_username', userClaims.preferred_username, idClaims.preferred_username, machineClaims.preferred_username),
+    buildClaimsRow('email', userClaims.email, idClaims.email, machineClaims.email),
+    buildClaimsRow('authorities', userClaims.authorities, idClaims.authorities, machineClaims.authorities),
+    buildClaimsRow('azp', userClaims.azp, idClaims.azp, machineClaims.azp),
+    buildClaimsRow('sid', userClaims.sid, idClaims.sid, machineClaims.sid)
+  ]
+})
+const claimsHighlights = computed(() => buildClaimsHighlights({
+  userAccessToken: decodedUserAccessToken.value,
+  idToken: decodedIdToken.value,
+  machineAccessToken: decodedMachineAccessToken.value
+}))
 
 onBeforeUnmount(() => {
   devicePollingAborted = true
@@ -428,9 +543,9 @@ async function startOidcLogout() {
 
     const endSessionUrl = new URL(data.end_session_endpoint)
     endSessionUrl.searchParams.set('id_token_hint', idToken.value)
-  endSessionUrl.searchParams.set('post_logout_redirect_uri', window.location.origin)
+    endSessionUrl.searchParams.set('post_logout_redirect_uri', window.location.origin)
 
-  sessionStorage.setItem('oauth2_oidc_logout_message', '1')
+    sessionStorage.setItem('oauth2_oidc_logout_message', '1')
 
     sessionStorage.removeItem('oauth2_access_token')
     sessionStorage.removeItem('oauth2_id_token')
@@ -684,6 +799,106 @@ function showError(e) {
 function maskToken(token) {
   if (typeof token !== 'string' || token.length < 24) return token || ''
   return `${token.slice(0, 12)}...${token.slice(-12)}`
+}
+
+function summarizeClaim(value) {
+  if (value === null || value === undefined || value === '') {
+    return '暂无'
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ')
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
+function buildClaimsRow(claim, userAccessTokenValue, idTokenValue, machineAccessTokenValue) {
+  return {
+    claim,
+    userAccessToken: normalizeClaimValue(userAccessTokenValue),
+    idToken: normalizeClaimValue(idTokenValue),
+    machineAccessToken: normalizeClaimValue(machineAccessTokenValue)
+  }
+}
+
+function normalizeClaimValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return '—'
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ')
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
+function decodeJwt(token) {
+  if (typeof token !== 'string' || !token) {
+    return null
+  }
+
+  const segments = token.split('.')
+  if (segments.length < 2) {
+    return null
+  }
+
+  try {
+    return {
+      header: JSON.parse(base64UrlDecode(segments[0])),
+      payload: JSON.parse(base64UrlDecode(segments[1]))
+    }
+  } catch {
+    return null
+  }
+}
+
+function base64UrlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+  return decodeURIComponent(Array.from(atob(padded))
+    .map(char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+    .join(''))
+}
+
+function buildClaimsHighlights({ userAccessToken, idToken: decodedIdTokenValue, machineAccessToken }) {
+  const highlights = []
+
+  if (decodedIdTokenValue?.payload) {
+    highlights.push('id_token 面向客户端身份会话，通常携带 preferred_username、email、sid 等 OIDC 身份声明。')
+  }
+  if (userAccessToken?.payload) {
+    highlights.push('用户 access_token 面向资源服务器授权，保留 scope 等访问控制字段；它不一定包含完整的用户资料声明。')
+  }
+  if (machineAccessToken?.payload) {
+    highlights.push('client_credentials access_token 通常没有真实用户身份字段，更常见的是 sub 与 client_id 对应，表达“客户端自己”在访问资源。')
+  }
+
+  const userSubject = userAccessToken?.payload?.sub
+  const machineSubject = machineAccessToken?.payload?.sub
+  if (userSubject && machineSubject && userSubject !== machineSubject) {
+    highlights.push(`当前对比中，用户 token 的 sub 是 ${userSubject}，机器 token 的 sub 是 ${machineSubject}，两者主体并不相同。`)
+  }
+
+  if (!highlights.length) {
+    highlights.push('先完成一次 PKCE 登录或获取一次 M2M token，再观察三类 JWT 的 claims 差异。')
+  }
+
+  return highlights
+}
+
+function writeClaimsComparisonResult() {
+  result.value = {
+    operation: 'jwt_claims_comparison',
+    userAccessToken: decodedUserAccessToken.value,
+    idToken: decodedIdToken.value,
+    machineAccessToken: decodedMachineAccessToken.value,
+    highlights: claimsHighlights.value,
+    rows: claimsComparisonRows.value
+  }
 }
 
 function decorateDeviceAuth(data) {
