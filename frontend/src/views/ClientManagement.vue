@@ -7,21 +7,30 @@
         <span class="title">OAuth2 Client 管理</span>
       </div>
       <div class="header-right">
-        <el-button size="small" @click="goFlows">OAuth2 场景演示</el-button>
         <span class="username">{{ username }}</span>
         <el-button type="default" size="small" @click="handleLogout">退出</el-button>
       </div>
     </el-header>
 
     <el-main>
-      <!-- Toolbar -->
-      <div class="toolbar">
-        <el-button type="primary" :icon="Plus" @click="openCreate">新增 Client</el-button>
-        <el-button :icon="Refresh" @click="loadClients" :loading="tableLoading">刷新</el-button>
-      </div>
+      <el-container class="content-shell">
+        <el-aside class="side-nav">
+          <div class="side-nav-title">功能导航</div>
+          <el-menu class="side-menu" default-active="clients" @select="handleNavSelect">
+            <el-menu-item v-for="item in flowNavItems" :key="item.key" :index="item.key">
+              {{ item.label }}
+            </el-menu-item>
+            <el-menu-item index="clients">11. Client 管理</el-menu-item>
+          </el-menu>
+        </el-aside>
 
-      <!-- Table -->
-      <el-table :data="clients" v-loading="tableLoading" border stripe style="width: 100%">
+        <el-main class="content-main">
+          <div class="toolbar">
+            <el-button type="primary" :icon="Plus" @click="openCreate">新增 Client</el-button>
+            <el-button :icon="Refresh" @click="loadClients" :loading="tableLoading">刷新</el-button>
+          </div>
+
+          <el-table :data="clients" v-loading="tableLoading" border stripe style="width: 100%">
         <el-table-column prop="clientId" label="Client ID" min-width="160" />
         <el-table-column prop="clientName" label="名称" min-width="120" />
         <el-table-column label="认证方式" min-width="180">
@@ -57,13 +66,17 @@
           </template>
         </el-table-column>
         <el-table-column prop="clientIdIssuedAt" label="创建时间" min-width="160" />
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" text :icon="Edit" @click="openEdit(row.id)">编辑</el-button>
-            <el-button type="danger" size="small" text :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" :icon="Edit" @click="openEdit(row.id)">编辑</el-button>
+              <el-button type="danger" size="small" :icon="Delete" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
-      </el-table>
+          </el-table>
+        </el-main>
+      </el-container>
     </el-main>
   </el-container>
 
@@ -196,6 +209,19 @@ const formRules = {
   scopes: [{ required: true, type: 'array', min: 1, message: '至少填写一个 Scope', trigger: 'change' }]
 }
 
+const flowNavItems = [
+  { key: 'pkce', label: '1. Authorization Code + PKCE' },
+  { key: 'm2m', label: '2. Client Credentials' },
+  { key: 'client-auth', label: '3. Client 认证方式差异' },
+  { key: 'no-pkce', label: '4. Authorization Code without PKCE 对比' },
+  { key: 'token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
+  { key: 'dynamic-client', label: '6. Dynamic Client Registration' },
+  { key: 'par', label: '7. Pushed Authorization Request（PAR）' },
+  { key: 'device', label: '8. Device Code' },
+  { key: 'claims', label: '9. JWT Claims 差异' },
+  { key: 'scenes', label: '10. 场景说明' }
+]
+
 onMounted(async () => {
   try {
     const { data } = await authApi.status()
@@ -292,8 +318,11 @@ async function handleDelete(row) {
   }
 }
 
-function goFlows() {
-  router.push('/flows')
+function handleNavSelect(index) {
+  if (index === 'clients') {
+    return
+  }
+  router.push(index === 'pkce' ? '/flows' : `/flows?tab=${index}`)
 }
 
 async function handleLogout() {
@@ -311,6 +340,36 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 .layout {
   min-height: 100vh;
   background: #f5f7fa;
+}
+.content-shell {
+  min-height: calc(100vh - 92px);
+  gap: 16px;
+}
+.side-nav {
+  width: 320px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.side-nav-title {
+  padding: 18px 20px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  border-bottom: 1px solid #ebeef5;
+}
+.side-menu {
+  border-right: none;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.side-menu::-webkit-scrollbar {
+  display: none;
+}
+.content-main {
+  padding: 0;
 }
 .header {
   background: #409eff;
@@ -343,6 +402,12 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
   gap: 12px;
   margin-bottom: 16px;
 }
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
 .tag-gap {
   margin: 2px 2px;
 }
@@ -351,5 +416,15 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
+}
+@media (max-width: 960px) {
+  .content-shell {
+    display: block;
+    min-height: auto;
+  }
+  .side-nav {
+    width: 100%;
+    margin-bottom: 16px;
+  }
 }
 </style>

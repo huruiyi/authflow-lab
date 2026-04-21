@@ -24,7 +24,7 @@ SET @ts_short_rotation = '{"@class":"java.util.Collections$UnmodifiableMap","set
 -- 1. 传统 Web 应用
 --    认证：client_secret_basic
 --    授权：authorization_code + refresh_token
---    特点：需授权确认页，适合服务端渲染应用（Spring MVC / Thymeleaf）
+--    特点：保留传统 Web Client 语义；当前仓库演示统一回跳到前端 /callback
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -39,8 +39,8 @@ VALUES (
     '传统 Web 应用',
     'client_secret_basic',
     'authorization_code,refresh_token',
-    'http://localhost:8080/login/oauth2/code/webapp',
-    'http://localhost:8080',
+    'http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:5173',
     'openid,profile,email',
     @cs_consent,
     @ts_default
@@ -66,8 +66,8 @@ VALUES (
     '单页应用（SPA）',
     'none',
     'authorization_code,refresh_token',
-    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
-    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:5173',
     'openid,profile,email,read,write',
     @cs_pkce,
     @ts_default
@@ -120,8 +120,8 @@ VALUES (
     '单页应用（SPA + Consent）',
     'none',
     'authorization_code,refresh_token',
-    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
-    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:5173',
     'openid,profile,email,read,write',
     @cs_pkce_consent,
     @ts_default
@@ -147,8 +147,8 @@ VALUES (
     '单页应用（短过期 + Refresh 轮换）',
     'none',
     'authorization_code,refresh_token',
-    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
-    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:5173',
     'openid,profile,email,read,write',
     @cs_pkce,
     @ts_short_rotation
@@ -157,7 +157,7 @@ VALUES (
 
 -- ============================================================
 -- 3.3 单页应用（SPA + PAR）
---    认证：none（无 client_secret）
+--    认证：none + client_secret_post（由后端代发 PAR，SPA 不直接持有密钥）
 --    授权：authorization_code + refresh_token
 --    特点：要求先提交 /oauth2/par，再使用 request_uri 发起授权
 -- ============================================================
@@ -170,9 +170,9 @@ VALUES (
     'client-spa-par-0033',
     'spa-par-client',
     NOW(),
-    NULL,
+    '{noop}par-secret',
     '单页应用（PAR）',
-    'none',
+    'none,client_secret_post',
     'authorization_code,refresh_token',
     'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
     'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
@@ -186,7 +186,7 @@ VALUES (
 -- 4. 移动端应用（iOS / Android）
 --    认证：none（公开客户端）
 --    授权：authorization_code + refresh_token
---    特点：PKCE 必须，支持自定义 scheme 深链，长 Token 有效期
+--    特点：PKCE 必须；同时保留原生 App deep link 和当前仓库前端演示回调
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -201,8 +201,8 @@ VALUES (
     '移动端应用',
     'none',
     'authorization_code,refresh_token',
-    'com.example.app://oauth2/callback,http://localhost:8100/callback',
-    'com.example.app://logout',
+    'com.example.app://oauth2/callback,http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:5173',
     'openid,profile,email,read,write',
     @cs_pkce,
     @ts_long_ttl
@@ -213,7 +213,7 @@ VALUES (
 -- 5. POST 方式认证的 Web 应用
 --    认证：client_secret_post（密钥放在请求 body 而非 Header）
 --    授权：authorization_code + refresh_token
---    特点：适合不支持 Basic Auth Header 的老旧框架
+--    特点：演示 client_secret_post；当前仓库使用 30000 端口回调与登出回跳
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -228,8 +228,8 @@ VALUES (
     'POST 认证 Web 应用',
     'client_secret_post',
     'authorization_code,refresh_token',
-    'http://localhost:9090/callback',
-    'http://localhost:9090',
+    'http://192.168.0.108:30000/callback',
+    'http://192.168.0.108:30000',
     'openid,profile',
     @cs_consent,
     @ts_default
@@ -240,7 +240,7 @@ VALUES (
 -- 6. IoT 设备 / 智能电视（设备码流程）
 --    认证：client_secret_basic
 --    授权：urn:ietf:params:oauth:grant-type:device_code + refresh_token
---    特点：无浏览器环境，用户在手机上完成授权
+--    特点：无浏览器环境，用户在手机上完成授权；当前演示默认申请 profile + read
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -257,7 +257,7 @@ VALUES (
     'urn:ietf:params:oauth:grant-type:device_code,refresh_token',
     NULL,
     NULL,
-    'openid,profile,read',
+    'profile,read',
     @cs_default,
     @ts_long_ttl
 );
@@ -267,7 +267,7 @@ VALUES (
 -- 7. 综合测试客户端
 --    认证：client_secret_basic + client_secret_post（双方式）
 --    授权：全部授权类型
---    特点：仅用于开发联调，覆盖所有流程
+--    特点：仅用于开发联调，覆盖当前仓库前后端两组回调地址
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -282,8 +282,8 @@ VALUES (
     '综合测试客户端',
     'client_secret_basic,client_secret_post',
     'authorization_code,refresh_token,client_credentials,urn:ietf:params:oauth:grant-type:device_code',
-    'http://localhost:8080/callback,http://localhost:5173/callback,http://127.0.0.1/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
-    'http://localhost:8080,http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'http://192.168.0.108:30000/callback,http://192.168.0.108:5173/callback',
+    'http://192.168.0.108:30000,http://192.168.0.108:5173',
     'openid,profile,email,read,write',
     @cs_pkce_consent,
     @ts_default
