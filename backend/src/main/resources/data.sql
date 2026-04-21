@@ -24,7 +24,7 @@ SET @ts_short_rotation = '{"@class":"java.util.Collections$UnmodifiableMap","set
 -- 1. 传统 Web 应用
 --    认证：client_secret_basic
 --    授权：authorization_code + refresh_token
---    特点：需授权确认页，适合服务端渲染应用（Spring MVC / Thymeleaf）
+--    特点：保留传统 Web Client 语义；当前仓库演示统一回跳到前端 /callback
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -186,7 +186,7 @@ VALUES (
 -- 4. 移动端应用（iOS / Android）
 --    认证：none（公开客户端）
 --    授权：authorization_code + refresh_token
---    特点：PKCE 必须，支持自定义 scheme 深链，长 Token 有效期
+--    特点：PKCE 必须；同时保留原生 App deep link 和当前仓库前端演示回调
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -213,7 +213,7 @@ VALUES (
 -- 5. POST 方式认证的 Web 应用
 --    认证：client_secret_post（密钥放在请求 body 而非 Header）
 --    授权：authorization_code + refresh_token
---    特点：适合不支持 Basic Auth Header 的老旧框架
+--    特点：演示 client_secret_post；当前仓库使用 30000 端口回调与登出回跳
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -267,7 +267,7 @@ VALUES (
 -- 7. 综合测试客户端
 --    认证：client_secret_basic + client_secret_post（双方式）
 --    授权：全部授权类型
---    特点：仅用于开发联调，覆盖所有流程
+--    特点：仅用于开发联调，覆盖当前仓库前后端两组回调地址
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,

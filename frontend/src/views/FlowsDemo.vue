@@ -6,21 +6,24 @@
         <span class="title">OAuth2 真实使用场景演示</span>
       </div>
       <div class="header-right">
-        <el-button size="small" @click="goClients">Client 管理</el-button>
         <el-button type="default" size="small" @click="handleLogout">退出</el-button>
       </div>
     </el-header>
 
     <el-main>
-      <el-alert
-        title="这个页面不只是管理 Client，而是演示 OAuth2 在真实业务中的使用：用户登录授权、服务间调用、携带 Token 访问受保护资源。"
-        type="info"
-        show-icon
-        :closable="false"
-        class="mb16"
-      />
+      <el-container class="content-shell">
+        <el-aside class="side-nav">
+          <div class="side-nav-title">功能导航</div>
+          <el-menu class="side-menu" :default-active="activeTab" @select="handleNavSelect">
+            <el-menu-item v-for="item in flowNavItems" :key="item.key" :index="item.key">
+              {{ item.label }}
+            </el-menu-item>
+            <el-menu-item index="clients">11. Client 管理</el-menu-item>
+          </el-menu>
+        </el-aside>
 
-      <el-tabs v-model="activeTab" type="border-card">
+        <el-main class="content-main">
+          <el-tabs v-model="activeTab" type="border-card" class="content-tabs">
         <el-tab-pane label="1. Authorization Code + PKCE" name="pkce">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="适用场景">SPA / Vue / React / 移动端公开客户端</el-descriptions-item>
@@ -531,6 +534,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="10. 场景说明" name="scenes">
+          <div class="scenes-pane">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
               用户在 Vue 前端点击登录，跳转授权服务器，登录并授权后回调前端，前端使用 code + code_verifier 换取 token。
@@ -548,13 +552,16 @@
               设备获取 device_code 和 user_code，提示用户去浏览器输入 user_code 完成授权，设备再轮询 token 端点。
             </el-timeline-item>
           </el-timeline>
+          </div>
         </el-tab-pane>
-      </el-tabs>
+          </el-tabs>
 
-      <el-card shadow="never" class="mt16">
-        <template #header><span>接口响应 / 调试输出</span></template>
-        <pre class="result-box">{{ prettyResult }}</pre>
-      </el-card>
+          <el-card shadow="never" class="mt16">
+            <template #header><span>接口响应 / 调试输出</span></template>
+            <pre class="result-box">{{ prettyResult }}</pre>
+          </el-card>
+        </el-main>
+      </el-container>
     </el-main>
   </el-container>
 </template>
@@ -618,9 +625,23 @@ const clientAuthDemoClients = {
   }
 }
 
+const flowNavItems = [
+  { key: 'pkce', label: '1. Authorization Code + PKCE' },
+  { key: 'm2m', label: '2. Client Credentials' },
+  { key: 'client-auth', label: '3. Client 认证方式差异' },
+  { key: 'no-pkce', label: '4. Authorization Code without PKCE 对比' },
+  { key: 'token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
+  { key: 'dynamic-client', label: '6. Dynamic Client Registration' },
+  { key: 'par', label: '7. Pushed Authorization Request（PAR）' },
+  { key: 'device', label: '8. Device Code' },
+  { key: 'claims', label: '9. JWT Claims 差异' },
+  { key: 'scenes', label: '10. 场景说明' }
+]
+const flowTabNames = flowNavItems.map(item => item.key)
+
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref(['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'par', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
+const activeTab = ref(flowTabNames.includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
@@ -800,13 +821,21 @@ watch(activeTab, (tab) => {
     loadTokenLifecycleFromCurrentSession()
   }
   const nextQuery = { ...route.query }
-  if (['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'par', 'device', 'claims'].includes(tab)) {
+  if (tab !== 'pkce' && flowTabNames.includes(tab)) {
     nextQuery.tab = tab
   } else {
     delete nextQuery.tab
   }
   router.replace({ query: nextQuery })
 })
+
+function handleNavSelect(index) {
+  if (index === 'clients') {
+    router.push('/clients')
+    return
+  }
+  activeTab.value = index
+}
 
 const decodedUserAccessToken = computed(() => decodeJwt(accessToken.value))
 const decodedIdToken = computed(() => decodeJwt(idToken.value))
@@ -1579,10 +1608,6 @@ async function handleLogout() {
   router.push('/login')
 }
 
-function goClients() {
-  router.push('/clients')
-}
-
 function showError(e) {
   result.value = e.response?.data || { error: e.message }
   ElMessage.error(e.response?.data?.error_description || e.response?.data?.error || e.message)
@@ -1883,8 +1908,44 @@ function delay(ms) {
 
 <style scoped>
 .layout {
-  min-height: 100vh;
+  min-height: 98.5vh;
   background: #f5f7fa;
+}
+.content-shell {
+  min-height: calc(100vh - 140px);
+  gap: 16px;
+}
+.side-nav {
+  width: 320px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.side-nav-title {
+  padding: 18px 20px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  border-bottom: 1px solid #ebeef5;
+}
+.side-menu {
+  border-right: none;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.side-menu::-webkit-scrollbar {
+  display: none;
+}
+.content-main {
+  padding: 0;
+}
+.content-tabs :deep(.el-tabs__header) {
+  display: none;
+}
+.content-tabs :deep(.el-tabs__content) {
+  padding: 0;
 }
 .header {
   background: #409eff;
@@ -1927,5 +1988,18 @@ function delay(ms) {
 }
 .result-box {
   margin: 0;
+}
+.scenes-pane {
+  padding: 60px 0;
+}
+@media (max-width: 960px) {
+  .content-shell {
+    display: block;
+    min-height: auto;
+  }
+  .side-nav {
+    width: 100%;
+    margin-bottom: 16px;
+  }
 }
 </style>
