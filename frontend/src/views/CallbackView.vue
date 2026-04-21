@@ -82,6 +82,7 @@ onMounted(async () => {
   const savedState = sessionStorage.getItem('oauth2_state')
   const codeVerifier = sessionStorage.getItem('pkce_code_verifier')
   const clientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
+  const pkceMode = sessionStorage.getItem('pkce_mode') || 'required'
   const redirectUri = `${window.location.origin}${route.path}`
 
   if (!savedState || state !== savedState) {
@@ -90,19 +91,26 @@ onMounted(async () => {
     return
   }
 
-  if (!codeVerifier) {
+  if (pkceMode === 'required' && !codeVerifier) {
     error.value = '缺少 code_verifier，无法完成 PKCE 换 token'
     loading.value = false
     return
   }
 
   try {
-    const { data } = await oauth2Api.exchangeCode({
+    const tokenRequestBody = {
       grant_type: 'authorization_code',
       client_id: clientId,
       code,
-      redirect_uri: redirectUri,
-      code_verifier: codeVerifier
+      redirect_uri: redirectUri
+    }
+
+    if (pkceMode === 'required') {
+      tokenRequestBody.code_verifier = codeVerifier
+    }
+
+    const { data } = await oauth2Api.exchangeCode({
+      ...tokenRequestBody
     })
     tokenResult.value = data
     sessionStorage.setItem('oauth2_access_token', data.access_token)
@@ -119,6 +127,8 @@ onMounted(async () => {
   } finally {
     sessionStorage.removeItem('oauth2_state')
     sessionStorage.removeItem('pkce_code_verifier')
+    sessionStorage.removeItem('pkce_mode')
+    sessionStorage.removeItem('oauth2_demo_scenario')
     loading.value = false
   }
 })

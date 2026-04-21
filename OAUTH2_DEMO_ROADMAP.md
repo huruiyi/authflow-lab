@@ -35,6 +35,10 @@
 
 - [x] Client 认证方式差异 Demo（client_secret_basic / client_secret_post / none）
 
+### 安全对比能力
+
+- [x] Authorization Code without PKCE 对比 Demo
+
 ## 2. 当前演示覆盖说明
 
 项目目前已经覆盖以下典型 OAuth2 / OIDC 学习路径：
@@ -50,6 +54,7 @@
 9. OIDC 会话退出：RP-Initiated Logout
 10. JWT Claims 差异对比：用户 token vs 机器 token vs id_token
 11. Client 认证方式对比：client_secret_basic vs client_secret_post vs none
+12. Authorization Code 安全对比：with PKCE vs without PKCE
 
 ## 3. OIDC Logout 与正常退出的区别
 
@@ -98,10 +103,9 @@
 
 建议按下面顺序继续补齐：
 
-1. [ ] Authorization Code without PKCE 对比 Demo
-2. [ ] Access Token 过期与 Refresh Token 轮换策略演示
-3. [ ] Dynamic Client Registration
-4. [ ] Pushed Authorization Request（PAR）
+1. [ ] Access Token 过期与 Refresh Token 轮换策略演示
+2. [ ] Dynamic Client Registration
+3. [ ] Pushed Authorization Request（PAR）
 
 ## 5. 每项待实现的目的
 
