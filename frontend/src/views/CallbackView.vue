@@ -124,7 +124,9 @@ onMounted(async () => {
 })
 
 function goFlows() {
-  router.push('/flows')
+  const returnTo = sessionStorage.getItem('oauth2_return_to') || '/flows'
+  sessionStorage.removeItem('oauth2_return_to')
+  router.push(returnTo)
 }
 
 function goClients() {

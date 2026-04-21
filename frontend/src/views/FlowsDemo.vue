@@ -112,7 +112,109 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="3. Device Code" name="device">
+        <el-tab-pane label="3. Client 认证方式差异" name="client-auth">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">对比 client_secret_basic、client_secret_post、none 三种 token endpoint 客户端认证模型</el-descriptions-item>
+            <el-descriptions-item label="重点理解">机密客户端要证明“我是谁”，公开客户端则不保存 secret，而是依赖 PKCE</el-descriptions-item>
+            <el-descriptions-item label="当前客户端">all-in-one-client 同时支持 basic/post；spa-public-client 代表公开客户端</el-descriptions-item>
+          </el-descriptions>
+
+          <el-alert
+            class="mt16"
+            type="info"
+            show-icon
+            :closable="false"
+            title="同一个 token endpoint，机密客户端可以通过 Header 或 Body 认证；公开客户端不应持有 client_secret。"
+          />
+
+          <el-row :gutter="16" class="mt16">
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>机密客户端：basic / post</span></template>
+                <el-form :model="clientAuthForm" label-position="top">
+                  <el-form-item label="client_id">
+                    <el-input v-model="clientAuthForm.confidentialClientId" />
+                  </el-form-item>
+                  <el-form-item label="client_secret">
+                    <el-input v-model="clientAuthForm.confidentialClientSecret" show-password />
+                  </el-form-item>
+                  <el-form-item label="scope">
+                    <el-input v-model="clientAuthForm.confidentialScope" />
+                  </el-form-item>
+                </el-form>
+
+                <div class="actions-row">
+                  <el-button type="primary" @click="getClientAuthMethodToken('basic')">用 Basic 获取 Token</el-button>
+                  <el-button type="success" @click="getClientAuthMethodToken('post')">用 Post 获取 Token</el-button>
+                </div>
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Basic Token">
+                    <div class="token-box">{{ maskToken(clientAuthTokens.basic) || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Post Token">
+                    <div class="token-box">{{ maskToken(clientAuthTokens.post) || '暂无' }}</div>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>公开客户端：none + PKCE</span></template>
+                <el-form :model="clientAuthForm" label-position="top">
+                  <el-form-item label="client_id">
+                    <el-input v-model="clientAuthForm.publicClientId" />
+                  </el-form-item>
+                  <el-form-item label="scope">
+                    <el-input v-model="clientAuthForm.publicScope" />
+                  </el-form-item>
+                </el-form>
+
+                <div class="actions-row">
+                  <el-button type="warning" plain @click="startPublicClientAuthDemo">公开客户端发起 PKCE 登录</el-button>
+                  <el-button type="danger" plain @click="tryPublicClientCredentials">错误示例：public client 用 client_credentials</el-button>
+                </div>
+
+                <el-alert
+                  class="mt16"
+                  type="warning"
+                  show-icon
+                  :closable="false"
+                  title="公开客户端没有 client_secret，因此不能像服务端那样用 client_credentials 直接向 token 端点换服务 Token。"
+                />
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>三种认证方式对比</span></template>
+            <el-table :data="clientAuthComparisonRows" border>
+              <el-table-column prop="dimension" label="对比维度" min-width="180" />
+              <el-table-column prop="basic" label="client_secret_basic" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="post" label="client_secret_post" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="none" label="none" min-width="220" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>差异结论</span></template>
+            <div class="actions-row">
+              <el-button @click="writeClientAuthSummary">输出当前客户端认证总结</el-button>
+            </div>
+            <el-alert
+              v-for="highlight in clientAuthHighlights"
+              :key="highlight"
+              class="mt16"
+              type="success"
+              show-icon
+              :closable="false"
+              :title="highlight"
+            />
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="4. Device Code" name="device">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="适用场景">智能电视、IoT 设备、无浏览器输入能力的终端</el-descriptions-item>
             <el-descriptions-item label="Client">device-flow-client</el-descriptions-item>
@@ -153,7 +255,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="4. JWT Claims 差异" name="claims">
+        <el-tab-pane label="5. JWT Claims 差异" name="claims">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
             <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
@@ -235,7 +337,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="5. 场景说明" name="scenes">
+        <el-tab-pane label="6. 场景说明" name="scenes">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
               用户在 Vue 前端点击登录，跳转授权服务器，登录并授权后回调前端，前端使用 code + code_verifier 换取 token。
@@ -302,9 +404,30 @@ const m2mClients = [
   }
 ]
 
+const clientAuthDemoClients = {
+  basic: {
+    clientId: 'all-in-one-client',
+    clientSecret: 'all-secret',
+    scope: 'read write',
+    transport: 'HTTP Header'
+  },
+  post: {
+    clientId: 'all-in-one-client',
+    clientSecret: 'all-secret',
+    scope: 'read write',
+    transport: 'Form Body'
+  },
+  none: {
+    clientId: 'spa-public-client',
+    clientSecret: '',
+    scope: 'openid profile email read write',
+    transport: 'No secret'
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref(['device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
+const activeTab = ref(['client-auth', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
@@ -332,19 +455,83 @@ const deviceForm = reactive({
   scope: 'openid profile read'
 })
 
+const clientAuthForm = reactive({
+  confidentialClientId: clientAuthDemoClients.basic.clientId,
+  confidentialClientSecret: clientAuthDemoClients.basic.clientSecret,
+  confidentialScope: clientAuthDemoClients.basic.scope,
+  publicClientId: clientAuthDemoClients.none.clientId,
+  publicScope: clientAuthDemoClients.none.scope
+})
+
+const clientAuthTokens = reactive({
+  basic: '',
+  post: ''
+})
+
 const prettyResult = computed(() => JSON.stringify(result.value, null, 2))
 const m2mSelectedClient = computed(
   () => m2mClients.find(client => client.key === m2mForm.selectedClientKey) || m2mClients[0]
 )
 const m2mLifecycleToken = computed(() => m2mToken.value || m2mLastIssuedToken.value)
+const clientAuthComparisonRows = computed(() => {
+  const basicConfig = clientAuthDemoClients.basic
+  const postConfig = clientAuthDemoClients.post
+  const noneConfig = clientAuthDemoClients.none
+
+  return [
+    {
+      dimension: '是否携带 client_secret',
+      basic: '是，放在 Basic Header 中',
+      post: '是，放在表单 body 中',
+      none: '否，公开客户端不保存密钥'
+    },
+    {
+      dimension: '典型 grant_type',
+      basic: 'client_credentials / authorization_code',
+      post: 'authorization_code / client_credentials（服务端允许时）',
+      none: 'authorization_code + PKCE'
+    },
+    {
+      dimension: '当前演示客户端',
+      basic: basicConfig.clientId,
+      post: postConfig.clientId,
+      none: noneConfig.clientId
+    },
+    {
+      dimension: '请求位置',
+      basic: basicConfig.transport,
+      post: postConfig.transport,
+      none: noneConfig.transport
+    },
+    {
+      dimension: '适用对象',
+      basic: '机密客户端 / 服务端应用 / 服务间调用',
+      post: '机密客户端，但运行环境不便设置 Authorization Header',
+      none: 'SPA / 移动端 / 原生 App'
+    }
+  ]
+})
+const clientAuthHighlights = computed(() => {
+  const highlights = [
+    'client_secret_basic 与 client_secret_post 都属于机密客户端认证，只是密钥传输位置不同。',
+    'none 不是“更弱的 basic”，而是公开客户端模型：不保存密钥，靠 PKCE 证明是同一发起方。'
+  ]
+
+  if (clientAuthTokens.basic && clientAuthTokens.post) {
+    highlights.push('当前 Basic 与 Post 都已成功拿到 token，说明服务端同时接受两种机密客户端认证方式。')
+  }
+
+  if (!clientAuthTokens.basic && !clientAuthTokens.post) {
+    highlights.push('先分别点一次 Basic / Post 获取 token，再观察机密客户端两种认证方式的差异。')
+  }
+
+  return highlights
+})
 
 watch(activeTab, (tab) => {
   const nextQuery = { ...route.query }
-  if (['device', 'claims'].includes(tab)) {
-    nextQuery.tab = 'device'
-    if (tab === 'claims') {
-      nextQuery.tab = 'claims'
-    }
+  if (['client-auth', 'device', 'claims'].includes(tab)) {
+    nextQuery.tab = tab
   } else {
     delete nextQuery.tab
   }
@@ -414,6 +601,7 @@ async function startAuthorizationCodeFlow({ clientId, scope }) {
   sessionStorage.setItem('oauth2_state', state)
   sessionStorage.setItem('pkce_code_verifier', codeVerifier)
   sessionStorage.setItem('oauth2_client_id', clientId)
+  sessionStorage.setItem('oauth2_return_to', `/flows${activeTab.value === 'pkce' ? '' : `?tab=${activeTab.value}`}`)
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -581,6 +769,80 @@ async function getM2mToken() {
     }
   } catch (e) {
     showError(e)
+  }
+}
+
+async function getClientAuthMethodToken(method) {
+  try {
+    let data
+
+    if (method === 'basic') {
+      const basic = btoa(`${clientAuthForm.confidentialClientId}:${clientAuthForm.confidentialClientSecret}`)
+      ;({ data } = await oauth2Api.clientCredentials({
+        grant_type: 'client_credentials',
+        scope: clientAuthForm.confidentialScope
+      }, {
+        Authorization: `Basic ${basic}`
+      }))
+    } else {
+      ;({ data } = await oauth2Api.clientCredentials({
+        grant_type: 'client_credentials',
+        client_id: clientAuthForm.confidentialClientId,
+        client_secret: clientAuthForm.confidentialClientSecret,
+        scope: clientAuthForm.confidentialScope
+      }))
+    }
+
+    clientAuthTokens[method] = data.access_token
+    result.value = {
+      operation: `client_auth_${method}`,
+      authMethod: method === 'basic' ? 'client_secret_basic' : 'client_secret_post',
+      clientId: clientAuthForm.confidentialClientId,
+      scope: clientAuthForm.confidentialScope,
+      requestPlacement: method === 'basic' ? 'Authorization Header' : 'Form Body',
+      tokenPreview: maskToken(data.access_token),
+      response: data
+    }
+    ElMessage.success(`${method === 'basic' ? 'Basic' : 'Post'} 认证成功`)
+  } catch (e) {
+    showError(e)
+  }
+}
+
+async function startPublicClientAuthDemo() {
+  result.value = {
+    operation: 'client_auth_none',
+    authMethod: 'none',
+    clientId: clientAuthForm.publicClientId,
+    message: '公开客户端不会携带 client_secret，而是通过 Authorization Code + PKCE 发起授权。完成登录后会回到当前演示标签页。',
+    scope: clientAuthForm.publicScope
+  }
+  await startAuthorizationCodeFlow({
+    clientId: clientAuthForm.publicClientId,
+    scope: clientAuthForm.publicScope
+  })
+}
+
+async function tryPublicClientCredentials() {
+  try {
+    const { data } = await oauth2Api.clientCredentials({
+      grant_type: 'client_credentials',
+      client_id: clientAuthForm.publicClientId,
+      scope: 'read'
+    })
+    result.value = {
+      operation: 'public_client_credentials_unexpected_success',
+      response: data
+    }
+  } catch (e) {
+    result.value = {
+      operation: 'public_client_credentials_failed_as_expected',
+      authMethod: 'none',
+      clientId: clientAuthForm.publicClientId,
+      message: '公开客户端尝试直接使用 client_credentials 时失败，说明它不能像机密客户端那样靠 secret 向 token endpoint 认证。',
+      error: e.response?.data || { error: e.message }
+    }
+    ElMessage.success('公开客户端错误示例已返回预期失败')
   }
 }
 
@@ -898,6 +1160,26 @@ function writeClaimsComparisonResult() {
     machineAccessToken: decodedMachineAccessToken.value,
     highlights: claimsHighlights.value,
     rows: claimsComparisonRows.value
+  }
+}
+
+function writeClientAuthSummary() {
+  result.value = {
+    operation: 'client_auth_summary',
+    confidentialClient: {
+      clientId: clientAuthForm.confidentialClientId,
+      basicTokenPreview: maskToken(clientAuthTokens.basic),
+      postTokenPreview: maskToken(clientAuthTokens.post),
+      scope: clientAuthForm.confidentialScope
+    },
+    publicClient: {
+      clientId: clientAuthForm.publicClientId,
+      loginModel: 'authorization_code + PKCE',
+      currentUserAccessTokenPreview: maskToken(accessToken.value),
+      scope: clientAuthForm.publicScope
+    },
+    comparisonRows: clientAuthComparisonRows.value,
+    highlights: clientAuthHighlights.value
   }
 }
 
