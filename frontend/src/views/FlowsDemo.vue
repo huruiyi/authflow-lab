@@ -30,6 +30,7 @@
 
           <div class="actions-row">
             <el-button type="primary" @click="startPkceFlow">发起授权登录</el-button>
+            <el-button type="warning" plain @click="startScopeConsentDemo">演示 Scope 缩减授权</el-button>
             <el-button @click="loadDiscovery">查看 Discovery 文档</el-button>
             <el-button @click="loadJwks">查看 JWK Set</el-button>
           </div>
@@ -55,6 +56,7 @@
             <el-button type="danger" @click="callWrite" :disabled="!accessToken">写入业务资源</el-button>
             <el-button @click="callTokenInfo" :disabled="!accessToken">查看 Token Claims</el-button>
             <el-button type="primary" plain @click="doRefreshToken" :disabled="!refreshToken">刷新 Access Token</el-button>
+            <el-button type="info" plain @click="startOidcLogout" :disabled="!idToken">OIDC Logout</el-button>
           </div>
         </el-tab-pane>
 
@@ -63,6 +65,7 @@
             <el-descriptions-item label="适用场景">微服务 / BFF / 定时任务 / 后端到后端 API</el-descriptions-item>
             <el-descriptions-item label="说明">可直接切换不同客户端，观察 client_credentials 下 read / write 权限是否生效</el-descriptions-item>
             <el-descriptions-item label="资源权限">/resource/read 需要 read，/resource/write 需要 write</el-descriptions-item>
+            <el-descriptions-item label="生命周期">支持演示 introspection 与 revocation，观察 token 激活状态变化</el-descriptions-item>
           </el-descriptions>
 
           <el-form :model="m2mForm" inline class="mt16">
@@ -99,6 +102,8 @@
             <el-button type="primary" @click="getM2mToken">获取服务 Token</el-button>
             <el-button type="success" :disabled="!m2mToken" @click="callReadWithM2m">调用只读资源</el-button>
             <el-button type="danger" :disabled="!m2mToken" @click="callWriteWithM2m">调用写资源</el-button>
+            <el-button :disabled="!m2mLifecycleToken" @click="introspectM2mToken">Introspect Token</el-button>
+            <el-button type="warning" :disabled="!m2mToken" @click="revokeM2mToken">Revoke Token</el-button>
           </div>
 
           <el-card shadow="never" class="mt16">
@@ -220,9 +225,11 @@ const router = useRouter()
 const activeTab = ref(route.query.tab === 'device' ? 'device' : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
+const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
 const refreshToken = ref(sessionStorage.getItem('oauth2_refresh_token') || '')
 const currentScope = ref(sessionStorage.getItem('oauth2_scope') || '')
 const m2mToken = ref('')
+const m2mLastIssuedToken = ref('')
 const deviceAuth = ref({})
 const isPollingDeviceToken = ref(false)
 let devicePollingAborted = false
@@ -247,6 +254,7 @@ const prettyResult = computed(() => JSON.stringify(result.value, null, 2))
 const m2mSelectedClient = computed(
   () => m2mClients.find(client => client.key === m2mForm.selectedClientKey) || m2mClients[0]
 )
+const m2mLifecycleToken = computed(() => m2mToken.value || m2mLastIssuedToken.value)
 
 watch(activeTab, (tab) => {
   const nextQuery = { ...route.query }
@@ -263,7 +271,26 @@ onBeforeUnmount(() => {
 })
 
 async function startPkceFlow() {
-  const clientId = 'spa-public-client'
+  await startAuthorizationCodeFlow({
+    clientId: 'spa-public-client',
+    scope: 'openid profile email read write'
+  })
+}
+
+async function startScopeConsentDemo() {
+  result.value = {
+    operation: 'scope_consent_demo',
+    message: '即将使用 spa-consent-client 发起授权。进入授权确认页后，可以取消勾选 write，只保留 read 进行 scope 缩减授权演示。',
+    requestedScope: 'openid profile email read write',
+    expectedScopeAfterConsent: '例如 openid profile email read'
+  }
+  await startAuthorizationCodeFlow({
+    clientId: 'spa-consent-client',
+    scope: 'openid profile email read write'
+  })
+}
+
+async function startAuthorizationCodeFlow({ clientId, scope }) {
   const frontendOrigin = window.location.origin
   const redirectUri = `${frontendOrigin}/callback`
   const state = generateRandomString(32)
@@ -277,7 +304,7 @@ async function startPkceFlow() {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'openid profile email read write',
+    scope,
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256'
@@ -387,6 +414,39 @@ async function doRefreshToken() {
   }
 }
 
+async function startOidcLogout() {
+  try {
+    const { data } = await oauth2Api.getDiscovery()
+    if (!data.end_session_endpoint) {
+      result.value = {
+        operation: 'oidc_logout',
+        message: 'discovery 文档未暴露 end_session_endpoint，当前无法演示 OIDC Logout。'
+      }
+      ElMessage.warning('当前服务未暴露 end_session_endpoint')
+      return
+    }
+
+    const endSessionUrl = new URL(data.end_session_endpoint)
+    endSessionUrl.searchParams.set('id_token_hint', idToken.value)
+  endSessionUrl.searchParams.set('post_logout_redirect_uri', window.location.origin)
+
+  sessionStorage.setItem('oauth2_oidc_logout_message', '1')
+
+    sessionStorage.removeItem('oauth2_access_token')
+    sessionStorage.removeItem('oauth2_id_token')
+    sessionStorage.removeItem('oauth2_refresh_token')
+    sessionStorage.removeItem('oauth2_scope')
+    accessToken.value = ''
+    idToken.value = ''
+    refreshToken.value = ''
+    currentScope.value = ''
+
+    window.location.href = endSessionUrl.toString()
+  } catch (e) {
+    showError(e)
+  }
+}
+
 async function getM2mToken() {
   try {
     const basic = btoa(`${m2mForm.clientId}:${m2mForm.clientSecret}`)
@@ -397,12 +457,60 @@ async function getM2mToken() {
       Authorization: `Basic ${basic}`
     })
     m2mToken.value = data.access_token
+    m2mLastIssuedToken.value = data.access_token
     result.value = {
       clientId: m2mForm.clientId,
       requestedScope: m2mForm.scope,
       selectedClient: m2mSelectedClient.value.label,
       ...data
     }
+  } catch (e) {
+    showError(e)
+  }
+}
+
+async function introspectM2mToken() {
+  try {
+    const token = m2mLifecycleToken.value
+    const basic = btoa(`${m2mForm.clientId}:${m2mForm.clientSecret}`)
+    const { data } = await oauth2Api.introspectToken({
+      token,
+      token_type_hint: 'access_token'
+    }, {
+      Authorization: `Basic ${basic}`
+    })
+    result.value = {
+      operation: 'introspection',
+      clientId: m2mForm.clientId,
+      selectedClient: m2mSelectedClient.value.label,
+      inspectedTokenPreview: maskToken(token),
+      introspection: data
+    }
+  } catch (e) {
+    showError(e)
+  }
+}
+
+async function revokeM2mToken() {
+  try {
+    const token = m2mToken.value
+    const basic = btoa(`${m2mForm.clientId}:${m2mForm.clientSecret}`)
+    await oauth2Api.revokeToken({
+      token,
+      token_type_hint: 'access_token'
+    }, {
+      Authorization: `Basic ${basic}`
+    })
+    m2mLastIssuedToken.value = token
+    m2mToken.value = ''
+    result.value = {
+      operation: 'revocation',
+      clientId: m2mForm.clientId,
+      selectedClient: m2mSelectedClient.value.label,
+      revokedTokenPreview: maskToken(token),
+      message: 'access_token 已撤销。此时再做 introspection，active 应为 false。'
+    }
+    ElMessage.success('M2M access_token 已撤销')
   } catch (e) {
     showError(e)
   }
@@ -558,6 +666,7 @@ async function pollDeviceToken() {
 async function handleLogout() {
   await authApi.logout().catch(() => {})
   sessionStorage.removeItem('oauth2_access_token')
+  sessionStorage.removeItem('oauth2_id_token')
   sessionStorage.removeItem('oauth2_refresh_token')
   sessionStorage.removeItem('oauth2_scope')
   router.push('/login')
@@ -570,6 +679,11 @@ function goClients() {
 function showError(e) {
   result.value = e.response?.data || { error: e.message }
   ElMessage.error(e.response?.data?.error_description || e.response?.data?.error || e.message)
+}
+
+function maskToken(token) {
+  if (typeof token !== 'string' || token.length < 24) return token || ''
+  return `${token.slice(0, 12)}...${token.slice(-12)}`
 }
 
 function decorateDeviceAuth(data) {

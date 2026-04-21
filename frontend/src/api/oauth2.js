@@ -29,6 +29,16 @@ export const oauth2Api = {
     new URLSearchParams(body).toString(),
     { headers }
   ),
+  introspectToken: (body, headers = {}) => formHttp.post(
+    '/oauth2/introspect',
+    new URLSearchParams(body).toString(),
+    { headers }
+  ),
+  revokeToken: (body, headers = {}) => formHttp.post(
+    '/oauth2/revoke',
+    new URLSearchParams(body).toString(),
+    { headers }
+  ),
   getUserInfo: token => jsonHttp.get('/userinfo', {
     headers: { Authorization: `Bearer ${token}` }
   }),

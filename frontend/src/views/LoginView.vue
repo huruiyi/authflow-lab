@@ -40,6 +40,7 @@
             登 录
           </el-button>
         </el-form-item>
+        <el-alert v-if="logoutMessage" :title="logoutMessage" type="success" show-icon :closable="false" class="return-alert" />
         <el-alert v-if="returnToLabel" :title="returnToLabel" type="info" show-icon :closable="false" class="return-alert" />
         <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
       </el-form>
@@ -65,8 +66,14 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+const oidcLogoutCompleted = sessionStorage.getItem('oauth2_oidc_logout_message') === '1'
+if (oidcLogoutCompleted) {
+  sessionStorage.removeItem('oauth2_oidc_logout_message')
+}
+
 const returnTo = computed(() => normalizeReturnTo(route.query.returnTo))
 const returnToLabel = computed(() => returnTo.value ? `登录成功后将返回 ${returnTo.value}` : '')
+const logoutMessage = computed(() => oidcLogoutCompleted ? 'OIDC 会话已退出，请重新登录。' : '')
 
 async function handleLogin() {
   error.value = ''

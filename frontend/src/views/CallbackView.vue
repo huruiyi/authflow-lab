@@ -28,6 +28,9 @@
             <el-descriptions-item label="access_token">
               <div class="token-box">{{ tokenResult.access_token }}</div>
             </el-descriptions-item>
+            <el-descriptions-item label="id_token">
+              <div class="token-box">{{ tokenResult.id_token || '无' }}</div>
+            </el-descriptions-item>
             <el-descriptions-item label="refresh_token">
               <div class="token-box">{{ tokenResult.refresh_token || '无' }}</div>
             </el-descriptions-item>
@@ -104,6 +107,9 @@ onMounted(async () => {
     tokenResult.value = data
     sessionStorage.setItem('oauth2_access_token', data.access_token)
     sessionStorage.setItem('oauth2_scope', data.scope || '')
+    if (data.id_token) {
+      sessionStorage.setItem('oauth2_id_token', data.id_token)
+    }
     if (data.refresh_token) {
       sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
     }

@@ -98,6 +98,33 @@ VALUES (
 
 
 -- ============================================================
+-- 3.1 单页应用（SPA）+ 授权确认页
+--    认证：none（无 client_secret）
+--    授权：authorization_code + refresh_token
+--    特点：强制 PKCE + 强制 consent，用于演示 scope 缩减授权
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris, scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-spa-consent-0031',
+    'spa-consent-client',
+    NOW(),
+    NULL,
+    '单页应用（SPA + Consent）',
+    'none',
+    'authorization_code,refresh_token',
+    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
+    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'openid,profile,email,read,write',
+    @cs_pkce_consent,
+    @ts_default
+);
+
+
+-- ============================================================
 -- 4. 移动端应用（iOS / Android）
 --    认证：none（公开客户端）
 --    授权：authorization_code + refresh_token

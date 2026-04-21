@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           credentials: true
         },
-        '^/oauth2/(authorize|token|jwks|device_authorization)(/.*)?$': {
+        '^/oauth2/(authorize|token|jwks|device_authorization|introspect|revoke)(/.*)?$': {
           target: backendOrigin,
           changeOrigin: true
         },
