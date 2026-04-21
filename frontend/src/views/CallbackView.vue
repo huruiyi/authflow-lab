@@ -121,6 +121,12 @@ onMounted(async () => {
     if (data.refresh_token) {
       sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
     }
+    if (data.expires_in) {
+      const issuedAt = Date.now()
+      sessionStorage.setItem('oauth2_access_token_issued_at', String(issuedAt))
+      sessionStorage.setItem('oauth2_access_token_expires_at', String(issuedAt + Number(data.expires_in) * 1000))
+      sessionStorage.setItem('oauth2_access_token_expires_in', String(data.expires_in))
+    }
     ElMessage.success(`授权成功，已回到 ${window.location.origin}`)
   } catch (e) {
     error.value = e.response?.data?.error_description || e.response?.data?.error || e.message

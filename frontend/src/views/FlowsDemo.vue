@@ -262,7 +262,71 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="5. Device Code" name="device">
+        <el-tab-pane label="5. Access Token 过期与 Refresh Token 轮换" name="token-lifecycle">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">观察 access_token 短过期后的刷新行为，并对比 refresh_token 是否轮换</el-descriptions-item>
+            <el-descriptions-item label="对比客户端">spa-public-client（默认复用 refresh_token） vs spa-rotation-client（每次刷新轮换）</el-descriptions-item>
+            <el-descriptions-item label="观察重点">expires_in 倒计时、刷新后 refresh_token 是否变化、过期后资源访问结果</el-descriptions-item>
+          </el-descriptions>
+
+          <el-row :gutter="16" class="mt16">
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>启动对比会话</span></template>
+                <div class="actions-row">
+                  <el-button type="primary" @click="startTokenLifecycleLogin('default')">登录默认策略（复用 refresh_token）</el-button>
+                  <el-button type="warning" plain @click="startTokenLifecycleLogin('rotation')">登录轮换策略（刷新后换新 refresh_token）</el-button>
+                  <el-button @click="loadTokenLifecycleFromCurrentSession">从当前会话加载</el-button>
+                </div>
+
+                <el-alert
+                  class="mt16"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                  :title="tokenLifecycleState.policyHint"
+                />
+              </el-card>
+            </el-col>
+
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>当前状态</span></template>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="当前 client_id">{{ tokenLifecycleState.clientId || '未指定' }}</el-descriptions-item>
+                  <el-descriptions-item label="access_token 剩余秒数">{{ tokenLifecycleRemainingSecondsDisplay }}</el-descriptions-item>
+                  <el-descriptions-item label="刷新次数">{{ tokenLifecycleState.refreshCount }}</el-descriptions-item>
+                  <el-descriptions-item label="最近一次刷新结果">{{ tokenLifecycleState.lastRefreshOutcome || '暂无' }}</el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>Token 明细</span></template>
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="access_token">
+                <div class="token-box">{{ accessToken || '暂无' }}</div>
+              </el-descriptions-item>
+              <el-descriptions-item label="refresh_token">
+                <div class="token-box">{{ refreshToken || '暂无' }}</div>
+              </el-descriptions-item>
+              <el-descriptions-item label="上一次 refresh_token">
+                <div class="token-box">{{ tokenLifecycleState.previousRefreshToken || '暂无' }}</div>
+              </el-descriptions-item>
+              <el-descriptions-item label="scope">{{ currentScope || '暂无' }}</el-descriptions-item>
+            </el-descriptions>
+          </el-card>
+
+          <div class="actions-row mt16">
+            <el-button type="success" :disabled="!refreshToken" @click="refreshForLifecycleDemo">执行 Refresh Token</el-button>
+            <el-button type="danger" plain @click="simulateAccessTokenExpired" :disabled="!accessToken">模拟 access_token 已过期</el-button>
+            <el-button type="warning" :disabled="!accessToken" @click="verifyLifecycleReadResource">验证读取资源</el-button>
+            <el-button @click="writeTokenLifecycleSummary">输出生命周期总结</el-button>
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="6. Device Code" name="device">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="适用场景">智能电视、IoT 设备、无浏览器输入能力的终端</el-descriptions-item>
             <el-descriptions-item label="Client">device-flow-client</el-descriptions-item>
@@ -303,7 +367,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="6. JWT Claims 差异" name="claims">
+        <el-tab-pane label="7. JWT Claims 差异" name="claims">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
             <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
@@ -385,7 +449,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="7. 场景说明" name="scenes">
+        <el-tab-pane label="8. 场景说明" name="scenes">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
               用户在 Vue 前端点击登录，跳转授权服务器，登录并授权后回调前端，前端使用 code + code_verifier 换取 token。
@@ -415,7 +479,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Connection } from '@element-plus/icons-vue'
@@ -475,7 +539,7 @@ const clientAuthDemoClients = {
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref(['client-auth', 'no-pkce', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
+const activeTab = ref(['client-auth', 'no-pkce', 'token-lifecycle', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
@@ -515,6 +579,17 @@ const clientAuthTokens = reactive({
   basic: '',
   post: ''
 })
+
+const tokenLifecycleState = reactive({
+  clientId: sessionStorage.getItem('oauth2_client_id') || 'spa-public-client',
+  refreshCount: 0,
+  previousRefreshToken: '',
+  lastRefreshOutcome: '',
+  policyHint: '默认可直接复用当前会话。若要对比轮换策略，请点“登录轮换策略”。'
+})
+
+const nowTimestamp = ref(Date.now())
+let lifecycleTimer = null
 
 const prettyResult = computed(() => JSON.stringify(result.value, null, 2))
 const m2mSelectedClient = computed(
@@ -597,10 +672,30 @@ const noPkceComparisonRows = computed(() => [
     withoutPkce: '授权码无法证明发起者身份，存在被截获滥用风险'
   }
 ])
+const tokenLifecycleRemainingSeconds = computed(() => {
+  const expiresAtRaw = sessionStorage.getItem('oauth2_access_token_expires_at')
+  const expiresAt = Number(expiresAtRaw)
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+    return null
+  }
+  return Math.floor((expiresAt - nowTimestamp.value) / 1000)
+})
+const tokenLifecycleRemainingSecondsDisplay = computed(() => {
+  if (tokenLifecycleRemainingSeconds.value === null) {
+    return '未知（请先获取 token）'
+  }
+  if (tokenLifecycleRemainingSeconds.value < 0) {
+    return `${Math.abs(tokenLifecycleRemainingSeconds.value)} 秒前已过期`
+  }
+  return `${tokenLifecycleRemainingSeconds.value} 秒`
+})
 
 watch(activeTab, (tab) => {
+  if (tab === 'token-lifecycle') {
+    loadTokenLifecycleFromCurrentSession()
+  }
   const nextQuery = { ...route.query }
-  if (['client-auth', 'no-pkce', 'device', 'claims'].includes(tab)) {
+  if (['client-auth', 'no-pkce', 'token-lifecycle', 'device', 'claims'].includes(tab)) {
     nextQuery.tab = tab
   } else {
     delete nextQuery.tab
@@ -638,8 +733,19 @@ const claimsHighlights = computed(() => buildClaimsHighlights({
   machineAccessToken: decodedMachineAccessToken.value
 }))
 
+onMounted(() => {
+  lifecycleTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 1000)
+  loadTokenLifecycleFromCurrentSession()
+})
+
 onBeforeUnmount(() => {
   devicePollingAborted = true
+  if (lifecycleTimer) {
+    window.clearInterval(lifecycleTimer)
+    lifecycleTimer = null
+  }
 })
 
 async function startPkceFlow() {
@@ -692,6 +798,43 @@ async function startNoPkceFlow() {
     usePkce: false,
     scenario: 'without-pkce-control'
   })
+}
+
+async function startTokenLifecycleLogin(mode) {
+  const useRotationPolicy = mode === 'rotation'
+  const clientId = useRotationPolicy ? 'spa-rotation-client' : 'spa-public-client'
+  const policyHint = useRotationPolicy
+    ? '当前使用 spa-rotation-client：access_token 默认 30 秒过期，refresh_token 每次刷新后应轮换。'
+    : '当前使用 spa-public-client：refresh_token 默认可复用，刷新后通常保持不变。'
+
+  tokenLifecycleState.clientId = clientId
+  tokenLifecycleState.refreshCount = 0
+  tokenLifecycleState.previousRefreshToken = ''
+  tokenLifecycleState.lastRefreshOutcome = ''
+  tokenLifecycleState.policyHint = policyHint
+
+  result.value = {
+    operation: 'token_lifecycle_login_prepare',
+    mode,
+    clientId,
+    policyHint,
+    message: '即将发起授权，完成后返回当前标签继续演示。'
+  }
+
+  await startAuthorizationCodeFlow({
+    clientId,
+    scope: 'openid profile email read write',
+    usePkce: true,
+    scenario: useRotationPolicy ? 'token-lifecycle-rotation' : 'token-lifecycle-default'
+  })
+}
+
+function loadTokenLifecycleFromCurrentSession() {
+  const currentClientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
+  tokenLifecycleState.clientId = currentClientId
+  tokenLifecycleState.policyHint = currentClientId === 'spa-rotation-client'
+    ? '当前会话是轮换策略客户端，刷新后 refresh_token 应变化。'
+    : '当前会话是默认策略客户端，refresh_token 可能保持不变。'
 }
 
 async function startAuthorizationCodeFlow({ clientId, scope, usePkce = true, scenario = 'default' }) {
@@ -813,6 +956,7 @@ async function callTokenInfo() {
 async function doRefreshToken() {
   const clientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
   try {
+    const previousRefreshToken = refreshToken.value
     const { data } = await oauth2Api.refreshToken({
       grant_type: 'refresh_token',
       client_id: clientId,
@@ -820,6 +964,7 @@ async function doRefreshToken() {
     })
     accessToken.value = data.access_token
     sessionStorage.setItem('oauth2_access_token', data.access_token)
+    persistAccessTokenExpiryMetadata(data.expires_in)
     if (data.refresh_token) {
       refreshToken.value = data.refresh_token
       sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
@@ -829,9 +974,53 @@ async function doRefreshToken() {
       sessionStorage.setItem('oauth2_scope', data.scope)
     }
     result.value = data
+    tokenLifecycleState.previousRefreshToken = previousRefreshToken
+    tokenLifecycleState.lastRefreshOutcome = data.refresh_token && data.refresh_token !== previousRefreshToken
+      ? 'refresh_token 已轮换'
+      : 'refresh_token 复用或服务端未返回新值'
     ElMessage.success('refresh_token 刷新成功')
   } catch (e) {
     showError(e)
+  }
+}
+
+async function refreshForLifecycleDemo() {
+  const previousRefreshToken = refreshToken.value
+  await doRefreshToken()
+  tokenLifecycleState.refreshCount += 1
+  tokenLifecycleState.previousRefreshToken = previousRefreshToken
+}
+
+function simulateAccessTokenExpired() {
+  const expiredAt = Date.now() - 1000
+  sessionStorage.setItem('oauth2_access_token_expires_at', String(expiredAt))
+  tokenLifecycleState.lastRefreshOutcome = '已手动标记 access_token 过期（仅前端演示）'
+  result.value = {
+    operation: 'simulate_access_token_expired',
+    expiresAt: expiredAt,
+    message: '已把 access_token 过期时间改为过去时刻，可继续点“验证读取资源”或“执行 Refresh Token”。'
+  }
+}
+
+async function verifyLifecycleReadResource() {
+  try {
+    const { data } = await oauth2Api.callReadResource(accessToken.value)
+    result.value = {
+      operation: 'token_lifecycle_verify_read',
+      status: 'success',
+      remainingSeconds: tokenLifecycleRemainingSeconds.value,
+      response: data
+    }
+    ElMessage.success('当前 access_token 仍可访问资源')
+  } catch (e) {
+    result.value = {
+      operation: 'token_lifecycle_verify_read',
+      status: 'failed',
+      remainingSeconds: tokenLifecycleRemainingSeconds.value,
+      error: e.response?.data || { error: e.message },
+      hint: '若是 token 过期导致失败，可点“执行 Refresh Token”后再重试。'
+    }
+    ElMessage.warning('资源访问失败，可能是 token 过期或权限问题')
   }
 }
 
@@ -1100,6 +1289,7 @@ async function pollDeviceToken() {
         if (data.access_token) {
           accessToken.value = data.access_token
           sessionStorage.setItem('oauth2_access_token', data.access_token)
+          persistAccessTokenExpiryMetadata(data.expires_in)
         }
         if (data.refresh_token) {
           refreshToken.value = data.refresh_token
@@ -1315,6 +1505,35 @@ function writeNoPkceSummary() {
       '去掉 PKCE 后，授权码可能被截获并被第三方客户端滥用，因此服务端应强制拒绝。'
     ]
   }
+}
+
+function writeTokenLifecycleSummary() {
+  result.value = {
+    operation: 'token_lifecycle_summary',
+    clientId: tokenLifecycleState.clientId,
+    refreshCount: tokenLifecycleState.refreshCount,
+    remainingSeconds: tokenLifecycleRemainingSeconds.value,
+    refreshTokenChanged: tokenLifecycleState.previousRefreshToken
+      ? refreshToken.value !== tokenLifecycleState.previousRefreshToken
+      : null,
+    previousRefreshTokenPreview: maskToken(tokenLifecycleState.previousRefreshToken),
+    currentRefreshTokenPreview: maskToken(refreshToken.value),
+    hints: [
+      '默认策略客户端通常复用 refresh_token。',
+      '轮换策略客户端刷新后应返回新的 refresh_token。',
+      'access_token 过期后应使用 refresh_token 续期，而不是强制用户重新登录。'
+    ]
+  }
+}
+
+function persistAccessTokenExpiryMetadata(expiresInSeconds) {
+  if (!expiresInSeconds) {
+    return
+  }
+  const issuedAt = Date.now()
+  sessionStorage.setItem('oauth2_access_token_issued_at', String(issuedAt))
+  sessionStorage.setItem('oauth2_access_token_expires_at', String(issuedAt + Number(expiresInSeconds) * 1000))
+  sessionStorage.setItem('oauth2_access_token_expires_in', String(expiresInSeconds))
 }
 
 function decorateDeviceAuth(data) {

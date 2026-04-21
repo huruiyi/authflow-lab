@@ -15,6 +15,9 @@ SET @ts_default  = '{"@class":"java.util.Collections$UnmodifiableMap","settings.
 -- token 有效期：AT=1h  RT=7d  不复用 RefreshToken
 SET @ts_long_ttl = '{"@class":"java.util.Collections$UnmodifiableMap","settings.token.reuse-refresh-tokens":false,"settings.token.x509-certificate-bound-access-tokens":false,"settings.token.id-token-signature-algorithm":["org.springframework.security.oauth2.jose.jws.SignatureAlgorithm","RS256"],"settings.token.access-token-time-to-live":["java.time.Duration",3600.000000000],"settings.token.access-token-format":{"@class":"org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat","value":"self-contained"},"settings.token.refresh-token-time-to-live":["java.time.Duration",604800.000000000],"settings.token.authorization-code-time-to-live":["java.time.Duration",300.000000000],"settings.token.device-code-time-to-live":["java.time.Duration",300.000000000]}';
 
+-- token 有效期：AT=30s  RT=10min  不复用 RefreshToken（用于前端演示短过期 + 轮换）
+SET @ts_short_rotation = '{"@class":"java.util.Collections$UnmodifiableMap","settings.token.reuse-refresh-tokens":false,"settings.token.x509-certificate-bound-access-tokens":false,"settings.token.id-token-signature-algorithm":["org.springframework.security.oauth2.jose.jws.SignatureAlgorithm","RS256"],"settings.token.access-token-time-to-live":["java.time.Duration",30.000000000],"settings.token.access-token-format":{"@class":"org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat","value":"self-contained"},"settings.token.refresh-token-time-to-live":["java.time.Duration",600.000000000],"settings.token.authorization-code-time-to-live":["java.time.Duration",300.000000000],"settings.token.device-code-time-to-live":["java.time.Duration",300.000000000]}';
+
 
 -- ============================================================
 -- 1. 传统 Web 应用
@@ -121,6 +124,33 @@ VALUES (
     'openid,profile,email,read,write',
     @cs_pkce_consent,
     @ts_default
+);
+
+
+-- ============================================================
+-- 3.2 单页应用（SPA + 短过期 + Refresh Token 轮换）
+--    认证：none（无 client_secret）
+--    授权：authorization_code + refresh_token
+--    特点：强制 PKCE + AT 短有效期 + Refresh Token 每次刷新后轮换
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris, scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-spa-rotation-0032',
+    'spa-rotation-client',
+    NOW(),
+    NULL,
+    '单页应用（短过期 + Refresh 轮换）',
+    'none',
+    'authorization_code,refresh_token',
+    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
+    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'openid,profile,email,read,write',
+    @cs_pkce,
+    @ts_short_rotation
 );
 
 

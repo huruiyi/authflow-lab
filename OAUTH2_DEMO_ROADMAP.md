@@ -55,6 +55,7 @@
 10. JWT Claims 差异对比：用户 token vs 机器 token vs id_token
 11. Client 认证方式对比：client_secret_basic vs client_secret_post vs none
 12. Authorization Code 安全对比：with PKCE vs without PKCE
+13. Access Token 过期与 Refresh Token 轮换策略对比
 
 ## 3. OIDC Logout 与正常退出的区别
 
@@ -103,7 +104,7 @@
 
 建议按下面顺序继续补齐：
 
-1. [ ] Access Token 过期与 Refresh Token 轮换策略演示
+1. [x] Access Token 过期与 Refresh Token 轮换策略演示
 2. [ ] Dynamic Client Registration
 3. [ ] Pushed Authorization Request（PAR）
 
