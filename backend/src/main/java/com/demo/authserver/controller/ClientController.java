@@ -35,7 +35,7 @@ public class ClientController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ClientResponse> update(@PathVariable String id,
-                                                   @RequestBody ClientRequest request) {
+            @RequestBody ClientRequest request) {
         return ResponseEntity.ok(clientService.update(id, request));
     }
 

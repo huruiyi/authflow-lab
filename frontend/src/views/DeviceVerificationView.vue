@@ -31,7 +31,7 @@
 
       <el-descriptions v-else :column="1" border class="mb16">
         <el-descriptions-item label="client_id">{{ clientDisplayText }}</el-descriptions-item>
-        <el-descriptions-item label="user_code">{{ userCode || '缺失' }}</el-descriptions-item>
+        <el-descriptions-item label="user_code">{{ normalizedUserCode || '待输入' }}</el-descriptions-item>
         <el-descriptions-item label="scope">
           <div class="scope-list">
             <el-tag v-for="scope in scopes" :key="scope" class="scope-tag">{{ scope }}</el-tag>
@@ -46,6 +46,20 @@
       </div>
 
       <el-form v-else @submit.prevent>
+        <el-form-item v-if="showManualUserCodeInput" label="user_code">
+          <el-input
+            v-model="manualUserCode"
+            placeholder="请输入设备页面显示的 user_code，例如 WBHJ-JVZK"
+            maxlength="32"
+            clearable
+            @keyup.enter="resolveDeviceVerificationContext"
+          >
+            <template #append>
+              <el-button :loading="resolvingContext" @click="resolveDeviceVerificationContext">识别验证码</el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+
         <el-form-item>
           <el-checkbox-group v-model="approvedScopes">
             <el-checkbox v-for="scope in scopes" :key="scope" :label="scope">
@@ -55,7 +69,7 @@
         </el-form-item>
 
         <div class="actions">
-          <el-button type="primary" :loading="submitting" :disabled="isExpired" @click="approveConsent">确认授权</el-button>
+          <el-button type="primary" :loading="submitting" :disabled="isExpired || resolvingContext" @click="approveConsent">确认授权</el-button>
           <el-button :loading="submitting" @click="denyConsent">取消</el-button>
         </div>
       </el-form>
@@ -74,19 +88,23 @@ const countdownNow = ref(Date.now())
 const countdownTimerId = window.setInterval(() => {
   countdownNow.value = Date.now()
 }, 1000)
+const resolvingContext = ref(false)
 const submitting = ref(false)
 const success = ref(hasSuccessFlag(route.query.success))
 const message = ref(success.value ? '设备授权已提交成功，现在可以回到先前页面继续查看轮询结果。' : '')
 const messageType = ref(success.value ? 'success' : 'info')
 const clientId = computed(() => getSingleValue(route.query.client_id))
 const state = computed(() => getSingleValue(route.query.state))
-const userCode = computed(() => getSingleValue(route.query.user_code))
+const routeUserCode = computed(() => getSingleValue(route.query.user_code))
+const manualUserCode = ref(routeUserCode.value)
 const csrfToken = computed(() => getSingleValue(route.query._csrf))
 const csrfParameter = computed(() => getSingleValue(route.query._csrf_parameter) || '_csrf')
 const scopes = computed(() => normalizeScopes(route.query.scope))
 const approvedScopes = ref([...scopes.value])
 const requiresConsent = computed(() => Boolean(clientId.value && state.value))
-const deviceFlowTiming = getDeviceFlowTiming(getSingleValue(route.query.started_at), getSingleValue(route.query.expires_at), userCode.value)
+const normalizedUserCode = computed(() => normalizeUserCode(routeUserCode.value || manualUserCode.value))
+const showManualUserCodeInput = computed(() => !routeUserCode.value)
+const deviceFlowTiming = getDeviceFlowTiming(getSingleValue(route.query.started_at), getSingleValue(route.query.expires_at), normalizedUserCode.value)
 const expiresAt = computed(() => deviceFlowTiming.expiresAt)
 const hasCountdown = computed(() => Number.isFinite(expiresAt.value) && expiresAt.value > 0)
 const remainingMs = computed(() => {
@@ -104,10 +122,10 @@ const countdownText = computed(() => {
 })
 const clientDisplayText = computed(() => {
   if (clientId.value) return clientId.value
-  return requiresConsent.value ? '待确认客户端' : '设备验证码校验中'
+  return normalizedUserCode.value ? '点击“识别验证码”后自动识别' : '待输入 user_code'
 })
 const scopeDisplayText = computed(() => {
-  return requiresConsent.value ? '未申请额外 scope' : '提交验证码后展示授权 scope'
+  return normalizedUserCode.value ? '识别验证码后展示授权 scope' : '输入 user_code 后展示授权范围'
 })
 
 if (!success.value && isExpired.value) {
@@ -126,9 +144,14 @@ function approveConsent() {
     return
   }
 
-  if (!userCode.value) {
+  if (!normalizedUserCode.value) {
     message.value = '缺少 user_code 参数，无法继续授权。'
     messageType.value = 'error'
+    return
+  }
+
+  if (!routeUserCode.value) {
+    resolveDeviceVerificationContext()
     return
   }
 
@@ -153,7 +176,7 @@ function submitDeviceVerification() {
   const form = document.createElement('form')
   form.method = 'post'
   form.action = `${authServerOrigin}/oauth2/device_verification`
-  appendInput(form, 'user_code', userCode.value)
+  appendInput(form, 'user_code', normalizedUserCode.value)
   appendInput(form, csrfParameter.value, csrfToken.value)
   document.body.appendChild(form)
   form.submit()
@@ -173,7 +196,7 @@ function submitConsentApproval() {
   form.target = iframeName
   appendInput(form, 'client_id', clientId.value)
   appendInput(form, 'state', state.value)
-  appendInput(form, 'user_code', userCode.value)
+  appendInput(form, 'user_code', normalizedUserCode.value)
   appendInput(form, csrfParameter.value, csrfToken.value)
   approvedScopes.value.forEach(scope => appendInput(form, 'scope', scope))
   document.body.appendChild(form)
@@ -184,6 +207,31 @@ function submitConsentApproval() {
       handleSuccess('设备授权已提交成功，现在可以回到先前页面继续查看轮询结果。')
     }
   }, 1200)
+}
+
+function resolveDeviceVerificationContext() {
+  if (resolvingContext.value) return
+
+  if (isExpired.value) {
+    message.value = '该 Device Code 已过期，请回到设备演示页重新申请。'
+    messageType.value = 'warning'
+    return
+  }
+
+  if (!normalizedUserCode.value) {
+    message.value = '请输入有效的 user_code 后再识别。'
+    messageType.value = 'error'
+    return
+  }
+
+  resolvingContext.value = true
+  message.value = '正在识别验证码并加载客户端信息...'
+  messageType.value = 'info'
+
+  const targetUrl = new URL(`${authServerOrigin}/activate`)
+  targetUrl.searchParams.set('user_code', normalizedUserCode.value)
+  appendTimingParams(targetUrl)
+  window.location.href = targetUrl.toString()
 }
 
 function denyConsent() {
@@ -221,6 +269,11 @@ function appendInput(form, name, value) {
 
 function getSingleValue(value) {
   return typeof value === 'string' ? value : Array.isArray(value) ? value[0] : ''
+}
+
+function normalizeUserCode(value) {
+  if (typeof value !== 'string') return ''
+  return value.trim().toUpperCase()
 }
 
 function normalizeScopes(value) {
@@ -278,6 +331,18 @@ function readPersistedDeviceFlowTiming(userCode) {
 
 function getDeviceFlowStorageKey(userCode) {
   return `oauth2_device_flow_${userCode}`
+}
+
+function appendTimingParams(url) {
+  if (!hasCountdown.value) return
+  const startedAt = deviceFlowTiming.startedAt
+  const expiresAtValue = expiresAt.value
+  if (Number.isFinite(startedAt) && startedAt > 0) {
+    url.searchParams.set('started_at', String(startedAt))
+  }
+  if (Number.isFinite(expiresAtValue) && expiresAtValue > 0) {
+    url.searchParams.set('expires_at', String(expiresAtValue))
+  }
 }
 </script>
 
