@@ -227,7 +227,7 @@ const deviceAuth = ref({})
 const isPollingDeviceToken = ref(false)
 let devicePollingAborted = false
 
-const DEVICE_POLLING_TIMEOUT_MS = 2 * 60 * 1000
+const DEVICE_FLOW_TIMEOUT_MS = 2 * 60 * 1000
 const DEFAULT_DEVICE_INTERVAL_SECONDS = 5
 
 const m2mForm = reactive({
@@ -467,8 +467,8 @@ async function startDeviceFlow() {
     }, {
       Authorization: `Basic ${basic}`
     })
-    deviceAuth.value = data
-    result.value = data
+    deviceAuth.value = decorateDeviceAuth(data)
+    result.value = deviceAuth.value
   } catch (e) {
     showError(e)
   }
@@ -479,7 +479,7 @@ async function pollDeviceToken() {
 
   isPollingDeviceToken.value = true
   devicePollingAborted = false
-  const startedAt = Date.now()
+  const startedAt = getDeviceFlowStartedAt(deviceAuth.value)
   let waitMs = getDevicePollingIntervalMs(deviceAuth.value.interval)
 
   try {
@@ -518,7 +518,8 @@ async function pollDeviceToken() {
             verificationUriComplete: deviceAuth.value.verification_uri_complete,
             userCode: deviceAuth.value.user_code,
             interval: deviceAuth.value.interval,
-            timeoutSeconds: DEVICE_POLLING_TIMEOUT_MS / 1000
+            timeoutSeconds: DEVICE_FLOW_TIMEOUT_MS / 1000,
+            expiresAt: deviceAuth.value.expires_at
           }
         } else if (errorCode === 'slow_down') {
           waitMs += 5000
@@ -533,16 +534,17 @@ async function pollDeviceToken() {
         }
       }
 
-      if (Date.now() - startedAt >= DEVICE_POLLING_TIMEOUT_MS) {
+      if (Date.now() - startedAt >= DEVICE_FLOW_TIMEOUT_MS) {
         result.value = {
           error: 'polling_timeout',
-          message: '2 分钟内仍未获取到设备授权结果，请确认用户是否已完成授权，然后重新点击轮询。',
+          message: '自申请 Device Code 成功起 2 分钟内仍未获取到设备授权结果，请重新申请。',
           verificationUri: deviceAuth.value.verification_uri,
           verificationUriComplete: deviceAuth.value.verification_uri_complete,
           userCode: deviceAuth.value.user_code,
-          interval: Math.ceil(waitMs / 1000)
+          interval: Math.ceil(waitMs / 1000),
+          expiresAt: deviceAuth.value.expires_at
         }
-        ElMessage.warning('设备码轮询已超时，请重新发起或再次轮询')
+        ElMessage.warning('设备码已超时，请重新申请 Device Code')
         return
       }
 
@@ -568,6 +570,71 @@ function goClients() {
 function showError(e) {
   result.value = e.response?.data || { error: e.message }
   ElMessage.error(e.response?.data?.error_description || e.response?.data?.error || e.message)
+}
+
+function decorateDeviceAuth(data) {
+  const startedAt = Date.now()
+  const expiresAt = startedAt + DEVICE_FLOW_TIMEOUT_MS
+  const verificationUri = appendDeviceTimingParams(data.verification_uri, startedAt, expiresAt)
+  const verificationUriComplete = appendDeviceTimingParams(data.verification_uri_complete, startedAt, expiresAt)
+
+  persistDeviceFlowTiming(data.user_code, startedAt, expiresAt)
+
+  return {
+    ...data,
+    started_at: startedAt,
+    expires_at: expiresAt,
+    verification_uri: verificationUri,
+    verification_uri_complete: verificationUriComplete
+  }
+}
+
+function appendDeviceTimingParams(url, startedAt, expiresAt) {
+  if (typeof url !== 'string' || !url) return url
+  const parsedUrl = new URL(url)
+  parsedUrl.searchParams.set('started_at', String(startedAt))
+  parsedUrl.searchParams.set('expires_at', String(expiresAt))
+  return parsedUrl.toString()
+}
+
+function persistDeviceFlowTiming(userCode, startedAt, expiresAt) {
+  if (typeof userCode !== 'string' || !userCode) return
+  localStorage.setItem(getDeviceFlowStorageKey(userCode), JSON.stringify({ startedAt, expiresAt }))
+}
+
+function getDeviceFlowStartedAt(deviceAuthValue) {
+  const startedAt = Number(deviceAuthValue?.started_at)
+  if (Number.isFinite(startedAt) && startedAt > 0) {
+    return startedAt
+  }
+
+  const persistedTiming = getPersistedDeviceFlowTiming(deviceAuthValue?.user_code)
+  if (persistedTiming?.startedAt) {
+    return persistedTiming.startedAt
+  }
+
+  return Date.now()
+}
+
+function getPersistedDeviceFlowTiming(userCode) {
+  if (typeof userCode !== 'string' || !userCode) return null
+  const rawValue = localStorage.getItem(getDeviceFlowStorageKey(userCode))
+  if (!rawValue) return null
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    if (Number.isFinite(parsed?.startedAt) && Number.isFinite(parsed?.expiresAt)) {
+      return parsed
+    }
+  } catch {
+    localStorage.removeItem(getDeviceFlowStorageKey(userCode))
+  }
+
+  return null
+}
+
+function getDeviceFlowStorageKey(userCode) {
+  return `oauth2_device_flow_${userCode}`
 }
 
 function getDevicePollingIntervalMs(intervalSeconds) {

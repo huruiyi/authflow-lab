@@ -20,6 +20,11 @@
         class="mb16"
       />
 
+      <div v-if="hasCountdown" class="countdown-box mb16" :class="{ expired: isExpired }">
+        <div class="countdown-label">剩余授权时间</div>
+        <div class="countdown-value">{{ countdownText }}</div>
+      </div>
+
       <div v-if="success" class="success-state">
         <p class="success-text">设备授权已经完成，设备端现在可以继续轮询 token 端点获取访问令牌。</p>
       </div>
@@ -50,7 +55,7 @@
         </el-form-item>
 
         <div class="actions">
-          <el-button type="primary" :loading="submitting" @click="approveConsent">确认授权</el-button>
+          <el-button type="primary" :loading="submitting" :disabled="isExpired" @click="approveConsent">确认授权</el-button>
           <el-button :loading="submitting" @click="denyConsent">取消</el-button>
         </div>
       </el-form>
@@ -59,12 +64,16 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:30000`
+const countdownNow = ref(Date.now())
+const countdownTimerId = window.setInterval(() => {
+  countdownNow.value = Date.now()
+}, 1000)
 const submitting = ref(false)
 const success = ref(hasSuccessFlag(route.query.success))
 const message = ref(success.value ? '设备授权已提交成功，现在可以回到先前页面继续查看轮询结果。' : '')
@@ -77,6 +86,22 @@ const csrfParameter = computed(() => getSingleValue(route.query._csrf_parameter)
 const scopes = computed(() => normalizeScopes(route.query.scope))
 const approvedScopes = ref([...scopes.value])
 const requiresConsent = computed(() => Boolean(clientId.value && state.value))
+const deviceFlowTiming = getDeviceFlowTiming(getSingleValue(route.query.started_at), getSingleValue(route.query.expires_at), userCode.value)
+const expiresAt = computed(() => deviceFlowTiming.expiresAt)
+const hasCountdown = computed(() => Number.isFinite(expiresAt.value) && expiresAt.value > 0)
+const remainingMs = computed(() => {
+  if (!hasCountdown.value) return 0
+  return Math.max(expiresAt.value - countdownNow.value, 0)
+})
+const isExpired = computed(() => hasCountdown.value && remainingMs.value <= 0)
+const countdownText = computed(() => {
+  if (!hasCountdown.value) return '未设置'
+  if (isExpired.value) return '已过期'
+  const totalSeconds = Math.ceil(remainingMs.value / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
 const clientDisplayText = computed(() => {
   if (clientId.value) return clientId.value
   return requiresConsent.value ? '待确认客户端' : '设备验证码校验中'
@@ -85,7 +110,22 @@ const scopeDisplayText = computed(() => {
   return requiresConsent.value ? '未申请额外 scope' : '提交验证码后展示授权 scope'
 })
 
+if (!success.value && isExpired.value) {
+  message.value = '该 Device Code 已过期，请回到设备演示页重新申请。'
+  messageType.value = 'warning'
+}
+
+onBeforeUnmount(() => {
+  window.clearInterval(countdownTimerId)
+})
+
 function approveConsent() {
+  if (isExpired.value) {
+    message.value = '该 Device Code 已过期，请回到设备演示页重新申请。'
+    messageType.value = 'warning'
+    return
+  }
+
   if (!userCode.value) {
     message.value = '缺少 user_code 参数，无法继续授权。'
     messageType.value = 'error'
@@ -197,6 +237,48 @@ function hasSuccessFlag(value) {
   if (Array.isArray(value)) return value.some(hasSuccessFlag)
   return value === '' || value === 'true' || value === '1' || value === 'success'
 }
+
+function getDeviceFlowTiming(startedAtValue, expiresAtValue, userCode) {
+  const startedAt = Number(startedAtValue)
+  const expiresAt = Number(expiresAtValue)
+  if (Number.isFinite(startedAt) && Number.isFinite(expiresAt)) {
+    persistDeviceFlowTiming(userCode, startedAt, expiresAt)
+    return { startedAt, expiresAt }
+  }
+
+  const persisted = readPersistedDeviceFlowTiming(userCode)
+  if (persisted) {
+    return persisted
+  }
+
+  return { startedAt: NaN, expiresAt: NaN }
+}
+
+function persistDeviceFlowTiming(userCode, startedAt, expiresAt) {
+  if (typeof userCode !== 'string' || !userCode) return
+  localStorage.setItem(getDeviceFlowStorageKey(userCode), JSON.stringify({ startedAt, expiresAt }))
+}
+
+function readPersistedDeviceFlowTiming(userCode) {
+  if (typeof userCode !== 'string' || !userCode) return null
+  const rawValue = localStorage.getItem(getDeviceFlowStorageKey(userCode))
+  if (!rawValue) return null
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    if (Number.isFinite(parsed?.startedAt) && Number.isFinite(parsed?.expiresAt)) {
+      return parsed
+    }
+  } catch {
+    localStorage.removeItem(getDeviceFlowStorageKey(userCode))
+  }
+
+  return null
+}
+
+function getDeviceFlowStorageKey(userCode) {
+  return `oauth2_device_flow_${userCode}`
+}
 </script>
 
 <style scoped>
@@ -228,6 +310,28 @@ function hasSuccessFlag(value) {
 }
 .mb16 {
   margin-bottom: 16px;
+}
+.countdown-box {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: #ecf5ff;
+  border: 1px solid #b3d8ff;
+}
+.countdown-box.expired {
+  background: #fef0f0;
+  border-color: #fbc4c4;
+}
+.countdown-label {
+  color: #606266;
+  font-size: 13px;
+}
+.countdown-value {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+  font-variant-numeric: tabular-nums;
 }
 .success-state {
   margin-bottom: 16px;
