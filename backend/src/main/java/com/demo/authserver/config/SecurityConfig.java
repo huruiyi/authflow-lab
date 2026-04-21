@@ -55,6 +55,9 @@ public class SecurityConfig {
                 .with(authorizationServerConfigurer, server -> server
                         .authorizationEndpoint(authorization -> authorization
                                 .consentPage("/oauth2/consent"))
+                    .pushedAuthorizationRequestEndpoint(par -> {
+                        // Keep default PAR processing and expose explicit hook for future validation customization.
+                    })
                         .deviceAuthorizationEndpoint(deviceAuthorization ->
                                 deviceAuthorization.verificationUri(trimTrailingSlash(appBaseUrl) + DEVICE_VERIFICATION_PAGE))
                         .deviceVerificationEndpoint(deviceVerification -> deviceVerification
