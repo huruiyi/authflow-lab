@@ -48,6 +48,7 @@ public class DataInitializer implements ApplicationRunner {
         syncClientRedirectUris("spa-public-client", frontendRedirectUris(), frontendBaseUrl);
         syncClientRedirectUris("spa-consent-client", frontendRedirectUris(), frontendBaseUrl);
         syncClientRedirectUris("spa-rotation-client", frontendRedirectUris(), frontendBaseUrl);
+        syncClientRedirectUris("spa-par-client", frontendRedirectUris(), frontendBaseUrl);
         syncClientRedirectUris("all-in-one-client", frontendRedirectUris(), frontendPostLogoutRedirectUris());
     }
 

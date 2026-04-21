@@ -29,6 +29,11 @@ export const oauth2Api = {
     new URLSearchParams(body).toString(),
     { headers }
   ),
+  pushedAuthorization: (body, headers = {}) => formHttp.post(
+    '/oauth2/par',
+    new URLSearchParams(body).toString(),
+    { headers }
+  ),
   introspectToken: (body, headers = {}) => formHttp.post(
     '/oauth2/introspect',
     new URLSearchParams(body).toString(),

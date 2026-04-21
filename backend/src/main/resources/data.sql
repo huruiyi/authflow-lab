@@ -8,6 +8,7 @@ SET @cs_default        = '{"@class":"java.util.Collections$UnmodifiableMap","set
 SET @cs_consent        = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":false,"settings.client.require-authorization-consent":true,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":null}';
 SET @cs_pkce           = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":true,"settings.client.require-authorization-consent":false,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":null}';
 SET @cs_pkce_consent   = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":true,"settings.client.require-authorization-consent":true,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":null}';
+SET @cs_pkce_par       = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":true,"settings.client.require-authorization-consent":false,"settings.client.require-pushed-authorization-requests":true,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":null}';
 
 -- token 有效期：AT=5min  RT=1h  Code=5min  Device=5min
 SET @ts_default  = '{"@class":"java.util.Collections$UnmodifiableMap","settings.token.reuse-refresh-tokens":true,"settings.token.x509-certificate-bound-access-tokens":false,"settings.token.id-token-signature-algorithm":["org.springframework.security.oauth2.jose.jws.SignatureAlgorithm","RS256"],"settings.token.access-token-time-to-live":["java.time.Duration",300.000000000],"settings.token.access-token-format":{"@class":"org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat","value":"self-contained"},"settings.token.refresh-token-time-to-live":["java.time.Duration",3600.000000000],"settings.token.authorization-code-time-to-live":["java.time.Duration",300.000000000],"settings.token.device-code-time-to-live":["java.time.Duration",300.000000000]}';
@@ -151,6 +152,33 @@ VALUES (
     'openid,profile,email,read,write',
     @cs_pkce,
     @ts_short_rotation
+);
+
+
+-- ============================================================
+-- 3.3 单页应用（SPA + PAR）
+--    认证：none（无 client_secret）
+--    授权：authorization_code + refresh_token
+--    特点：要求先提交 /oauth2/par，再使用 request_uri 发起授权
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris, scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-spa-par-0033',
+    'spa-par-client',
+    NOW(),
+    NULL,
+    '单页应用（PAR）',
+    'none',
+    'authorization_code,refresh_token',
+    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
+    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'openid,profile,email,read,write',
+    @cs_pkce_par,
+    @ts_default
 );
 
 

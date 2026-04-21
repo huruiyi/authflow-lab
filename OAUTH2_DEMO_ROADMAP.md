@@ -56,6 +56,7 @@
 11. Client 认证方式对比：client_secret_basic vs client_secret_post vs none
 12. Authorization Code 安全对比：with PKCE vs without PKCE
 13. Access Token 过期与 Refresh Token 轮换策略对比
+14. Pushed Authorization Request（PAR）
 
 ## 3. OIDC Logout 与正常退出的区别
 
@@ -106,7 +107,7 @@
 
 1. [x] Access Token 过期与 Refresh Token 轮换策略演示
 2. [x] Dynamic Client Registration
-3. [ ] Pushed Authorization Request（PAR）
+3. [x] Pushed Authorization Request（PAR）
 
 ## 5. 每项待实现的目的
 

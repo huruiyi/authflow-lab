@@ -372,7 +372,41 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="7. Device Code" name="device">
+        <el-tab-pane label="7. Pushed Authorization Request（PAR）" name="par">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">先向 /oauth2/par 提交授权参数，拿到 request_uri，再跳转授权端点</el-descriptions-item>
+            <el-descriptions-item label="安全价值">敏感参数不直接暴露在浏览器地址栏，降低请求被篡改与泄露风险</el-descriptions-item>
+            <el-descriptions-item label="客户端">spa-par-client（要求 PAR + PKCE）</el-descriptions-item>
+          </el-descriptions>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>PAR 请求参数</span></template>
+            <el-form label-width="140px" class="inline-form">
+              <el-form-item label="client_id">
+                <el-input v-model="parForm.clientId" />
+              </el-form-item>
+              <el-form-item label="scope">
+                <el-input v-model="parForm.scope" />
+              </el-form-item>
+            </el-form>
+
+            <div class="actions-row">
+              <el-button type="primary" @click="startParFlow">1) 提交 PAR 并发起授权</el-button>
+              <el-button @click="writeParSummary">输出 PAR 总结</el-button>
+            </div>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>PAR 响应状态</span></template>
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="request_uri">{{ parState.requestUri || '暂无' }}</el-descriptions-item>
+              <el-descriptions-item label="expires_in">{{ parState.expiresIn ? `${parState.expiresIn} 秒` : '暂无' }}</el-descriptions-item>
+              <el-descriptions-item label="最近状态">{{ parState.lastStatus || '暂无' }}</el-descriptions-item>
+            </el-descriptions>
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="8. Device Code" name="device">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="适用场景">智能电视、IoT 设备、无浏览器输入能力的终端</el-descriptions-item>
             <el-descriptions-item label="Client">device-flow-client</el-descriptions-item>
@@ -413,7 +447,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="8. JWT Claims 差异" name="claims">
+        <el-tab-pane label="9. JWT Claims 差异" name="claims">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
             <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
@@ -495,7 +529,7 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="9. 场景说明" name="scenes">
+        <el-tab-pane label="10. 场景说明" name="scenes">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
               用户在 Vue 前端点击登录，跳转授权服务器，登录并授权后回调前端，前端使用 code + code_verifier 换取 token。
@@ -585,7 +619,7 @@ const clientAuthDemoClients = {
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref(['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
+const activeTab = ref(['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'par', 'device', 'claims'].includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
 const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
@@ -637,6 +671,17 @@ const dynamicClientState = reactive({
   id: '',
   clientId: '',
   lastOperation: ''
+})
+
+const parForm = reactive({
+  clientId: 'spa-par-client',
+  scope: 'openid profile email read write'
+})
+
+const parState = reactive({
+  requestUri: '',
+  expiresIn: 0,
+  lastStatus: ''
 })
 
 const tokenLifecycleState = reactive({
@@ -754,7 +799,7 @@ watch(activeTab, (tab) => {
     loadTokenLifecycleFromCurrentSession()
   }
   const nextQuery = { ...route.query }
-  if (['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'device', 'claims'].includes(tab)) {
+  if (['client-auth', 'no-pkce', 'token-lifecycle', 'dynamic-client', 'par', 'device', 'claims'].includes(tab)) {
     nextQuery.tab = tab
   } else {
     delete nextQuery.tab
@@ -963,6 +1008,52 @@ async function deleteDynamicClient() {
     dynamicClientState.lastOperation = '动态客户端已删除'
     ElMessage.success('动态客户端已删除')
   } catch (e) {
+    showError(e)
+  }
+}
+
+async function startParFlow() {
+  try {
+    const frontendOrigin = window.location.origin
+    const redirectUri = `${frontendOrigin}/callback`
+    const state = generateRandomString(32)
+    const pkcePair = await generatePkcePair()
+
+    sessionStorage.setItem('oauth2_state', state)
+    sessionStorage.setItem('pkce_mode', 'required')
+    sessionStorage.setItem('pkce_code_verifier', pkcePair.codeVerifier)
+    sessionStorage.setItem('oauth2_demo_scenario', 'par')
+    sessionStorage.setItem('oauth2_client_id', parForm.clientId)
+    sessionStorage.setItem('oauth2_return_to', '/flows?tab=par')
+
+    const { data } = await oauth2Api.pushedAuthorization({
+      response_type: 'code',
+      client_id: parForm.clientId,
+      redirect_uri: redirectUri,
+      scope: parForm.scope,
+      state,
+      code_challenge: pkcePair.codeChallenge,
+      code_challenge_method: 'S256'
+    })
+
+    parState.requestUri = data.request_uri || ''
+    parState.expiresIn = data.expires_in || 0
+    parState.lastStatus = 'PAR 请求成功，准备跳转授权端点'
+
+    result.value = {
+      operation: 'par_request',
+      clientId: parForm.clientId,
+      response: data,
+      message: '已获取 request_uri，将使用精简参数发起授权。'
+    }
+
+    const authorizeParams = new URLSearchParams({
+      client_id: parForm.clientId,
+      request_uri: data.request_uri
+    })
+    window.location.href = `${authServerOrigin}/oauth2/authorize?${authorizeParams.toString()}`
+  } catch (e) {
+    parState.lastStatus = 'PAR 请求失败'
     showError(e)
   }
 }
@@ -1666,6 +1757,20 @@ function writeDynamicClientSummary() {
     nextStep: dynamicClientState.id
       ? '可使用该 client_id 再次发起 Authorization Code + PKCE。'
       : '先执行动态注册，再进行授权演示。'
+  }
+}
+
+function writeParSummary() {
+  result.value = {
+    operation: 'par_summary',
+    clientId: parForm.clientId,
+    requestUri: parState.requestUri || null,
+    requestUriExpiresIn: parState.expiresIn || null,
+    keyPoints: [
+      'PAR 先在后端通道提交完整授权参数，返回 request_uri。',
+      '浏览器跳转授权端点时可不再携带完整 scope / redirect_uri / code_challenge。',
+      '该模式更适合高安全、合规要求高的企业场景。'
+    ]
   }
 }
 
