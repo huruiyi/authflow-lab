@@ -30,7 +30,7 @@ export const oauth2Api = {
     { headers }
   ),
   pushedAuthorization: (body, headers = {}) => formHttp.post(
-    '/oauth2/par',
+    '/api/auth/par',
     new URLSearchParams(body).toString(),
     { headers }
   ),

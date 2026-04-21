@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 @Configuration
 public class DataInitializer implements ApplicationRunner {
 
-    private static final String PAR_CLIENT_SECRET = "{noop}par-secret";
-
     private final JdbcUserDetailsManager userDetailsManager;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
@@ -30,6 +28,9 @@ public class DataInitializer implements ApplicationRunner {
 
     @Value("${app.frontend-base-url}")
     private String frontendBaseUrl;
+
+    @Value("${app.par-demo.client-secret}")
+    private String parClientSecret;
 
     public DataInitializer(JdbcUserDetailsManager userDetailsManager,
                            PasswordEncoder passwordEncoder,
@@ -122,7 +123,7 @@ public class DataInitializer implements ApplicationRunner {
             jdbcTemplate.update(
                     "UPDATE oauth2_registered_client SET client_authentication_methods = ?, client_secret = ? WHERE client_id = ?",
                     "none,client_secret_post",
-                    PAR_CLIENT_SECRET,
+                    "{noop}" + parClientSecret,
                     clientId
             );
         } catch (Exception ex) {

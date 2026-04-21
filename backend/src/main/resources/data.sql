@@ -157,7 +157,7 @@ VALUES (
 
 -- ============================================================
 -- 3.3 单页应用（SPA + PAR）
---    认证：none + client_secret_post（PAR 端点演示时使用 body 认证）
+--    认证：none + client_secret_post（由后端代发 PAR，SPA 不直接持有密钥）
 --    授权：authorization_code + refresh_token
 --    特点：要求先提交 /oauth2/par，再使用 request_uri 发起授权
 -- ============================================================

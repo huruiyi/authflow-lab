@@ -8,6 +8,9 @@ app:
   base-url: http://192.168.0.108:30000
   allowed-origins: http://localhost:5173,http://192.168.0.108:5173
   frontend-base-url: http://192.168.0.108:5173
+  par-demo:
+    client-id: spa-par-client
+    client-secret: par-secret
 
 spring:
   datasource:
