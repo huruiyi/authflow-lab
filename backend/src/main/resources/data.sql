@@ -240,7 +240,7 @@ VALUES (
 -- 6. IoT 设备 / 智能电视（设备码流程）
 --    认证：client_secret_basic
 --    授权：urn:ietf:params:oauth:grant-type:device_code + refresh_token
---    特点：无浏览器环境，用户在手机上完成授权
+--    特点：无浏览器环境，用户在手机上完成授权；当前演示默认申请 profile + read
 -- ============================================================
 INSERT IGNORE INTO oauth2_registered_client
 (id, client_id, client_id_issued_at, client_secret, client_name,
@@ -257,7 +257,7 @@ VALUES (
     'urn:ietf:params:oauth:grant-type:device_code,refresh_token',
     NULL,
     NULL,
-    'openid,profile,read',
+    'profile,read',
     @cs_default,
     @ts_long_ttl
 );

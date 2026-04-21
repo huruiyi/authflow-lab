@@ -411,6 +411,7 @@
             <el-descriptions-item label="适用场景">智能电视、IoT 设备、无浏览器输入能力的终端</el-descriptions-item>
             <el-descriptions-item label="Client">device-flow-client</el-descriptions-item>
             <el-descriptions-item label="特点">设备先申请 device_code，用户在另一终端访问 verification_uri 完成授权</el-descriptions-item>
+            <el-descriptions-item label="默认 Scope">profile read（当前设备流演示不申请 openid）</el-descriptions-item>
           </el-descriptions>
 
           <el-form :model="deviceForm" inline class="mt16">
@@ -644,7 +645,7 @@ const m2mForm = reactive({
 const deviceForm = reactive({
   clientId: 'device-flow-client',
   clientSecret: 'device-secret',
-  scope: 'openid profile read'
+  scope: 'profile read'
 })
 
 const clientAuthForm = reactive({
