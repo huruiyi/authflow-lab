@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendOrigin = env.VITE_BACKEND_ORIGIN || 'http://localhost:9000'
+  const backendOrigin = env.VITE_BACKEND_ORIGIN || 'http://localhost:30000'
   const host = env.VITE_DEV_HOST || '0.0.0.0'
 
   return {

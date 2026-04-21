@@ -226,7 +226,7 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:9000" },
+    { "key": "baseUrl", "value": "http://localhost:30000" },
     { "key": "spaClientId", "value": "spa-public-client" },
     { "key": "m2mClientId", "value": "m2m-service-client" },
     { "key": "m2mClientSecret", "value": "m2m-secret" },

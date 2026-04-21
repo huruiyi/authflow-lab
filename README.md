@@ -34,10 +34,10 @@ ipconfig
 
 ```yml
 server:
-  port: 9000
+  port: 30000
 
 app:
-  base-url: http://192.168.0.108:9000
+  base-url: http://192.168.0.108:30000
   allowed-origins: http://localhost:5173,http://192.168.0.108:5173
   frontend-base-url: http://192.168.0.108:5173
 ```
@@ -66,27 +66,27 @@ app:
 ### PowerShell 启动方式
 
 ```powershell
-$env:VITE_BACKEND_ORIGIN="http://192.168.0.108:9000"
+$env:VITE_BACKEND_ORIGIN="http://192.168.0.108:30000"
 npm --prefix frontend run dev
 ```
 
 ### CMD 启动方式
 
 ```cmd
-set VITE_BACKEND_ORIGIN=http://192.168.0.108:9000
+set VITE_BACKEND_ORIGIN=http://192.168.0.108:30000
 npm --prefix frontend run dev
 ```
 
 ### Git Bash 启动方式
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 ```
 
 这个变量会被 [`frontend/vite.config.js`](frontend/vite.config.js) 和 [`frontend/src/views/FlowsDemo.vue`](frontend/src/views/FlowsDemo.vue) 使用：
 
-- Vite 代理转发到 `http://192.168.0.108:9000`
-- 前端“发起授权登录”时跳到 `http://192.168.0.108:9000/oauth2/authorize`
+- Vite 代理转发到 `http://192.168.0.108:30000`
+- 前端“发起授权登录”时跳到 `http://192.168.0.108:30000/oauth2/authorize`
 
 ---
 
@@ -103,7 +103,7 @@ mvn -f backend/pom.xml spring-boot:run
 ### PowerShell
 
 ```powershell
-$env:APP_BASE_URL="http://192.168.0.108:9000"
+$env:APP_BASE_URL="http://192.168.0.108:30000"
 $env:APP_ALLOWED_ORIGINS="http://localhost:5173,http://192.168.0.108:5173"
 $env:APP_FRONTEND_BASE_URL="http://192.168.0.108:5173"
 mvn -f backend/pom.xml spring-boot:run
@@ -112,7 +112,7 @@ mvn -f backend/pom.xml spring-boot:run
 ### Git Bash
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:9000 \
+APP_BASE_URL=http://192.168.0.108:30000 \
 APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
 APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
 mvn -f backend/pom.xml spring-boot:run
@@ -125,7 +125,7 @@ mvn -f backend/pom.xml spring-boot:run
 ### 先启动后端
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:9000 \
+APP_BASE_URL=http://192.168.0.108:30000 \
 APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
 APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
 mvn -f backend/pom.xml spring-boot:run
@@ -134,7 +134,7 @@ mvn -f backend/pom.xml spring-boot:run
 ### 再启动前端
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 ```
 
 ---
@@ -174,7 +174,7 @@ http://192.168.0.108:5173
 3. 浏览器应跳到：
 
 ```text
-http://192.168.0.108:9000/oauth2/authorize?...
+http://192.168.0.108:30000/oauth2/authorize?...
 ```
 
 4. 登录授权后，应跳回：
@@ -197,13 +197,13 @@ http://192.168.0.108:5173/callback?code=...
 应该是：
 
 ```text
-http://192.168.0.108:9000/...
+http://192.168.0.108:30000/...
 ```
 
 而不是：
 
 ```text
-http://localhost:9000/...
+http://localhost:30000/...
 ```
 
 如果还是 `localhost`，说明后端 `app.base-url` 没生效。
@@ -236,9 +236,9 @@ http://192.168.0.108:5173
 说明前端或后端仍有旧配置：
 
 - 检查前端启动时有没有带：
-  - `VITE_BACKEND_ORIGIN=http://192.168.0.108:9000`
+  - `VITE_BACKEND_ORIGIN=http://192.168.0.108:30000`
 - 检查后端：
-  - `app.base-url=http://192.168.0.108:9000`
+  - `app.base-url=http://192.168.0.108:30000`
 
 ---
 
@@ -280,10 +280,10 @@ app:
 
 ```yml
 server:
-  port: 9000
+  port: 30000
 
 app:
-  base-url: http://192.168.0.108:9000
+  base-url: http://192.168.0.108:30000
   allowed-origins: http://localhost:5173,http://192.168.0.108:5173
   frontend-base-url: http://192.168.0.108:5173
 
@@ -314,7 +314,7 @@ mvn -f backend/pom.xml spring-boot:run
 ### 前端启动
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 ```
 
 ### 手机访问
@@ -338,7 +338,7 @@ mvn -f backend/pom.xml spring-boot:run
 前端：
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 ```
 
 ### 方案 B：全部用环境变量启动
@@ -346,7 +346,7 @@ VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
 后端：
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:9000 \
+APP_BASE_URL=http://192.168.0.108:30000 \
 APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
 APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
 mvn -f backend/pom.xml spring-boot:run
@@ -355,7 +355,7 @@ mvn -f backend/pom.xml spring-boot:run
 前端：
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:9000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 ```
 
 ---

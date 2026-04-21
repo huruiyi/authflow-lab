@@ -181,7 +181,7 @@ import { authApi } from '../api/auth'
 import { oauth2Api } from '../api/oauth2'
 import { generatePkcePair, generateRandomString } from '../composables/pkce'
 
-const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:9000`
+const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:30000`
 
 const m2mClients = [
   {
