@@ -157,7 +157,7 @@ VALUES (
 
 -- ============================================================
 -- 3.3 单页应用（SPA + PAR）
---    认证：none（无 client_secret）
+--    认证：none + client_secret_post（PAR 端点演示时使用 body 认证）
 --    授权：authorization_code + refresh_token
 --    特点：要求先提交 /oauth2/par，再使用 request_uri 发起授权
 -- ============================================================
@@ -170,9 +170,9 @@ VALUES (
     'client-spa-par-0033',
     'spa-par-client',
     NOW(),
-    NULL,
+    '{noop}par-secret',
     '单页应用（PAR）',
-    'none',
+    'none,client_secret_post',
     'authorization_code,refresh_token',
     'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
     'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',

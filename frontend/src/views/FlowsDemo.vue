@@ -376,7 +376,7 @@
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">先向 /oauth2/par 提交授权参数，拿到 request_uri，再跳转授权端点</el-descriptions-item>
             <el-descriptions-item label="安全价值">敏感参数不直接暴露在浏览器地址栏，降低请求被篡改与泄露风险</el-descriptions-item>
-            <el-descriptions-item label="客户端">spa-par-client（要求 PAR + PKCE）</el-descriptions-item>
+            <el-descriptions-item label="客户端">spa-par-client（要求 PAR + PKCE；PAR 端点演示使用 client_secret_post）</el-descriptions-item>
           </el-descriptions>
 
           <el-card shadow="never" class="mt16">
@@ -384,6 +384,9 @@
             <el-form label-width="140px" class="inline-form">
               <el-form-item label="client_id">
                 <el-input v-model="parForm.clientId" />
+              </el-form-item>
+              <el-form-item label="client_secret">
+                <el-input v-model="parForm.clientSecret" show-password />
               </el-form-item>
               <el-form-item label="scope">
                 <el-input v-model="parForm.scope" />
@@ -675,6 +678,7 @@ const dynamicClientState = reactive({
 
 const parForm = reactive({
   clientId: 'spa-par-client',
+  clientSecret: 'par-secret',
   scope: 'openid profile email read write'
 })
 
@@ -1029,6 +1033,7 @@ async function startParFlow() {
     const { data } = await oauth2Api.pushedAuthorization({
       response_type: 'code',
       client_id: parForm.clientId,
+      client_secret: parForm.clientSecret,
       redirect_uri: redirectUri,
       scope: parForm.scope,
       state,
