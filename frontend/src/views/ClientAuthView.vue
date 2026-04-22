@@ -71,6 +71,15 @@
               :closable="false"
               title="公开客户端没有 client_secret，因此不能像服务端那样用 client_credentials 直接向 token 端点换服务 Token。"
             />
+
+            <el-descriptions :column="1" border class="mt16">
+              <el-descriptions-item label="Access Token">
+                <div class="token-box">{{ tokenState.accessToken || '暂无' }}</div>
+              </el-descriptions-item>
+              <el-descriptions-item label="ID Token">
+                <div class="token-box">{{ tokenState.idToken || '暂无' }}</div>
+              </el-descriptions-item>
+            </el-descriptions>
           </el-card>
         </el-col>
       </el-row>
@@ -107,15 +116,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { startAuthorizationCodeFlow, handleOAuth2Error, generateBasicAuth } from '../utils/oauth2Helper'
-import { maskToken } from '../utils/tokenHelper'
+import { startAuthorizationCodeFlow, handleOAuth2Error, generateBasicAuth, createOAuth2SyncListener } from '../utils/oauth2Helper'
+import { maskToken, saveTokens, getTokenState } from '../utils/tokenHelper'
+
+const oauth2SyncChannel = 'oauth2-token-sync-client-auth'
+let disposeTokenSync = null
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
+const tokenState = reactive(getTokenState())
 
 const clientAuthDemoClients = {
   basic: {
@@ -149,6 +162,15 @@ const clientAuthForm = reactive({
 const clientAuthTokens = reactive({
   basic: '',
   post: ''
+})
+
+onMounted(() => {
+  Object.assign(tokenState, getTokenState())
+  disposeTokenSync = createOAuth2SyncListener(oauth2SyncChannel, applySyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeTokenSync?.()
 })
 
 const clientAuthComparisonRows = computed(() => {
@@ -200,12 +222,31 @@ const clientAuthHighlights = computed(() => {
     highlights.push('当前 Basic 与 Post 都已成功拿到 token，说明服务端同时接受两种机密客户端认证方式。')
   }
 
+  if (tokenState.accessToken) {
+    highlights.push('当前公开客户端已从新窗口同步回 access_token / refresh_token / scope，可继续对照机密客户端与 PKCE 公开客户端的差异。')
+  }
+
   if (!clientAuthTokens.basic && !clientAuthTokens.post) {
     highlights.push('先分别点一次 Basic / Post 获取 token，再观察机密客户端两种认证方式的差异。')
   }
 
   return highlights
 })
+
+function applySyncedTokens(payload) {
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  result.value = {
+    operation: 'oauth2_callback_sync_client_auth',
+    authMethod: 'none',
+    clientId: payload.client_id || clientAuthForm.publicClientId,
+    message: '公开客户端已从新窗口同步回当前页。',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    refresh_token: payload.refresh_token ? '已返回' : '无'
+  }
+  ElMessage.success('公开客户端 Token 已同步')
+}
 
 async function getClientAuthMethodToken(method) {
   try {
@@ -249,7 +290,7 @@ async function startPublicClientAuthDemo() {
     operation: 'client_auth_none',
     authMethod: 'none',
     clientId: clientAuthForm.publicClientId,
-    message: '公开客户端不会携带 client_secret，而是通过 Authorization Code + PKCE 发起授权。完成登录后会回到当前演示标签页。',
+    message: '公开客户端不会携带 client_secret，而是通过 Authorization Code + PKCE 在新窗口发起授权，完成后会把 token 同步回当前演示页。',
     scope: clientAuthForm.publicScope
   }
   await startAuthorizationCodeFlow({
@@ -257,6 +298,8 @@ async function startPublicClientAuthDemo() {
     scope: clientAuthForm.publicScope,
     usePkce: true,
     scenario: 'client-auth-none',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel,
     returnTo: '/client-auth'
   })
 }
@@ -296,7 +339,10 @@ function writeClientAuthSummary() {
     publicClient: {
       clientId: clientAuthForm.publicClientId,
       loginModel: 'authorization_code + PKCE',
-      scope: clientAuthForm.publicScope
+      scope: tokenState.scope || clientAuthForm.publicScope,
+      accessToken: tokenState.accessToken || '暂无',
+      refreshToken: tokenState.refreshToken || '无',
+      idToken: tokenState.idToken || '无'
     },
     comparisonRows: clientAuthComparisonRows.value,
     highlights: clientAuthHighlights.value

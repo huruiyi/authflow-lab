@@ -24,15 +24,17 @@
       <el-container class="content-shell">
         <!-- Navigation Sidebar -->
         <el-aside class="side-nav">
-          <div class="side-nav-header">
-            <div class="side-nav-title">功能导航</div>
-            <div class="side-nav-subtitle">OAuth2 流程演示</div>
-          </div>
-          <el-menu class="side-menu" :default-active="currentRoute" @select="handleNavSelect">
-            <el-menu-item v-for="item in navItems" :key="item.path" :index="item.path">
-              <el-icon><Document /></el-icon>
-              <span>{{ item.label }}</span>
-            </el-menu-item>
+          <el-menu class="side-menu" :default-active="currentRoute" :default-openeds="defaultOpeneds" @select="handleNavSelect">
+            <el-sub-menu v-for="group in navGroups" :key="group.key" :index="group.key">
+              <template #title>
+                <el-icon><Document /></el-icon>
+                <span>{{ group.label }}</span>
+              </template>
+              <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">
+                <el-icon><Document /></el-icon>
+                <span>{{ item.label }}</span>
+              </el-menu-item>
+            </el-sub-menu>
           </el-menu>
         </el-aside>
 
@@ -53,20 +55,29 @@ import { authApi } from '../api/auth'
 const route = useRoute()
 const router = useRouter()
 
-const navItems = [
-  { path: '/pkce', label: '1. Authorization Code + PKCE' },
-  { path: '/m2m', label: '2. Client Credentials' },
-  { path: '/client-auth', label: '3. Client 认证方式差异' },
-  { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比' },
-  { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
-  { path: '/dynamic-client', label: '6. Dynamic Client Registration' },
-  { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
-  { path: '/device', label: '8. Device Code' },
-  { path: '/claims', label: '9. JWT Claims 差异' },
-  { path: '/scenarios', label: '10. 场景说明' },
-  { path: '/clients', label: '11. Client 管理' },
-  { path: '/flows-demo', label: 'Flows Demo', newWindow: true }
+const navGroups = [
+  {
+    key: 'oauth2-demos',
+    label: 'OAuth2 流程演示',
+    items: [
+      { path: '/pkce', label: '1. Authorization Code + PKCE' },
+      { path: '/m2m', label: '2. Client Credentials' },
+      { path: '/client-auth', label: '3. Client 认证方式差异' },
+      { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比' },
+      { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
+      { path: '/dynamic-client', label: '6. Dynamic Client Registration' },
+      { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
+      { path: '/device', label: '8. Device Code' },
+      { path: '/claims', label: '9. JWT Claims 差异' },
+      { path: '/scenarios', label: '10. 场景说明' },
+      { path: '/clients', label: '11. Client 管理' },
+      { path: '/flows-demo', label: 'Flows Demo', newWindow: true }
+    ]
+  }
 ]
+
+const navItems = navGroups.flatMap(group => group.items)
+const defaultOpeneds = navGroups.map(group => group.key)
 
 const currentRoute = computed(() => route.path)
 
@@ -218,7 +229,7 @@ async function handleLogout() {
 
 /* Side Navigation */
 .side-nav {
-  width: 248px;
+  width: 320px;
   max-width: 100%;
   background: #fff;
   border-radius: 8px;

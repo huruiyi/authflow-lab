@@ -184,6 +184,15 @@
                   :closable="false"
                   title="公开客户端没有 client_secret，因此不能像服务端那样用 client_credentials 直接向 token 端点换服务 Token。"
                 />
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Access Token">
+                    <div class="token-box">{{ accessToken || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="ID Token">
+                    <div class="token-box">{{ idToken || '暂无' }}</div>
+                  </el-descriptions-item>
+                </el-descriptions>
               </el-card>
             </el-col>
           </el-row>
@@ -1463,12 +1472,16 @@ async function startPublicClientAuthDemo() {
     operation: 'client_auth_none',
     authMethod: 'none',
     clientId: clientAuthForm.publicClientId,
-    message: '公开客户端不会携带 client_secret，而是通过 Authorization Code + PKCE 发起授权。完成登录后会回到当前演示标签页。',
+    message: '公开客户端不会携带 client_secret，而是通过 Authorization Code + PKCE 在新窗口发起授权，完成后会把 token 同步回当前演示页。',
     scope: clientAuthForm.publicScope
   }
   await startAuthorizationCodeFlow({
     clientId: clientAuthForm.publicClientId,
-    scope: clientAuthForm.publicScope
+    scope: clientAuthForm.publicScope,
+    usePkce: true,
+    scenario: 'client-auth-none',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel
   })
 }
 
