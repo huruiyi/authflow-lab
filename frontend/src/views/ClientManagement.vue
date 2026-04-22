@@ -3,78 +3,118 @@
     <!-- Header -->
     <el-header class="header">
       <div class="header-left">
-        <el-icon :size="24" color="#fff"><Key /></el-icon>
-        <span class="title">OAuth2 Client 管理</span>
+        <div class="logo-icon">
+          <el-icon :size="28" color="#fff"><Key /></el-icon>
+        </div>
+        <div class="header-title">
+          <span class="title">OAuth2 Client 管理</span>
+          <span class="subtitle">安全授权管理中心</span>
+        </div>
       </div>
       <div class="header-right">
-        <span class="username">{{ username }}</span>
-        <el-button type="default" size="small" @click="handleLogout">退出</el-button>
+        <div class="user-info">
+          <el-icon :size="18" color="#fff"><User /></el-icon>
+          <span class="username">{{ username }}</span>
+        </div>
+        <el-button type="default" size="small" class="logout-btn" @click="handleLogout">
+          <el-icon><SwitchButton /></el-icon>
+          退出
+        </el-button>
       </div>
     </el-header>
 
-    <el-main>
+    <el-main class="main-content">
       <el-container class="content-shell">
         <el-aside class="side-nav">
-          <div class="side-nav-title">功能导航</div>
-          <el-menu class="side-menu" default-active="clients" @select="handleNavSelect">
-            <el-menu-item v-for="item in flowNavItems" :key="item.key" :index="item.key">
-              {{ item.label }}
+          <div class="side-nav-header">
+            <div class="side-nav-title">功能导航</div>
+            <div class="side-nav-subtitle">快速访问</div>
+          </div>
+          <el-menu class="side-menu" default-active="/clients" @select="handleNavSelect">
+            <el-menu-item v-for="item in flowNavItems" :key="item.path" :index="item.path">
+              <el-icon><Document /></el-icon>
+              <span>{{ item.label }}</span>
             </el-menu-item>
-            <el-menu-item index="clients">11. Client 管理</el-menu-item>
+            <el-menu-item index="/clients">
+              <el-icon><Setting /></el-icon>
+              <span>11. Client 管理</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
 
         <el-main class="content-main">
           <div class="toolbar">
-            <el-button type="primary" :icon="Plus" @click="openCreate">新增 Client</el-button>
-            <el-button :icon="Refresh" @click="loadClients" :loading="tableLoading">刷新</el-button>
+            <div class="toolbar-left">
+              <el-button type="primary" :icon="Plus" @click="openCreate" class="add-btn">
+                新增 Client
+              </el-button>
+              <el-button :icon="Refresh" @click="loadClients" :loading="tableLoading" class="refresh-btn">
+                刷新
+              </el-button>
+            </div>
+            <div class="toolbar-right">
+              <el-tag type="info" size="large">共 {{ clients.length }} 个客户端</el-tag>
+            </div>
           </div>
 
-          <el-table :data="clients" v-loading="tableLoading" border stripe style="width: 100%">
-        <el-table-column prop="clientId" label="Client ID" min-width="160" />
-        <el-table-column prop="clientName" label="名称" min-width="120" />
-        <el-table-column label="认证方式" min-width="180">
-          <template #default="{ row }">
-            <el-tag
-              v-for="m in row.clientAuthenticationMethods"
-              :key="m"
-              size="small"
-              class="tag-gap"
-            >{{ m }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="授权类型" min-width="220">
-          <template #default="{ row }">
-            <el-tag
-              v-for="g in row.authorizationGrantTypes"
-              :key="g"
-              type="success"
-              size="small"
-              class="tag-gap"
-            >{{ g }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Scopes" min-width="160">
-          <template #default="{ row }">
-            <el-tag
-              v-for="s in row.scopes"
-              :key="s"
-              type="warning"
-              size="small"
-              class="tag-gap"
-            >{{ s }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="clientIdIssuedAt" label="创建时间" min-width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" size="small" :icon="Edit" @click="openEdit(row.id)">编辑</el-button>
-              <el-button type="danger" size="small" :icon="Delete" @click="handleDelete(row)">删除</el-button>
-            </div>
-          </template>
-        </el-table-column>
-          </el-table>
+          <div class="table-container">
+            <el-table :data="clients" v-loading="tableLoading" border stripe class="custom-table">
+              <el-table-column prop="clientId" label="Client ID" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="clientName" label="名称" min-width="140" show-overflow-tooltip />
+              <el-table-column label="认证方式" min-width="200">
+                <template #default="{ row }">
+                  <el-tag
+                    v-for="m in row.clientAuthenticationMethods"
+                    :key="m"
+                    size="small"
+                    class="tag-gap"
+                    type="primary"
+                  >{{ m }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="授权类型" min-width="240">
+                <template #default="{ row }">
+                  <el-tag
+                    v-for="g in row.authorizationGrantTypes"
+                    :key="g"
+                    type="success"
+                    size="small"
+                    class="tag-gap"
+                  >{{ g }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Scopes" min-width="180">
+                <template #default="{ row }">
+                  <el-tag
+                    v-for="s in row.scopes"
+                    :key="s"
+                    type="warning"
+                    size="small"
+                    class="tag-gap"
+                  >{{ s }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="clientIdIssuedAt" label="创建时间" min-width="160" />
+              <el-table-column
+                label="操作"
+                width="180"
+                fixed="right"
+                class-name="actions-col"
+                header-cell-class-name="actions-col-header"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button type="primary" size="small" :icon="Edit" @click="openEdit(row.id)" class="action-btn">
+                      编辑
+                    </el-button>
+                    <el-button type="danger" size="small" :icon="Delete" @click="handleDelete(row)" class="action-btn">
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </el-main>
       </el-container>
     </el-main>
@@ -172,7 +212,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Refresh, Key, Minus } from '@element-plus/icons-vue'
 import { clientApi } from '../api/client'
 import { authApi } from '../api/auth'
 
@@ -210,16 +249,16 @@ const formRules = {
 }
 
 const flowNavItems = [
-  { key: 'pkce', label: '1. Authorization Code + PKCE' },
-  { key: 'm2m', label: '2. Client Credentials' },
-  { key: 'client-auth', label: '3. Client 认证方式差异' },
-  { key: 'no-pkce', label: '4. Authorization Code without PKCE 对比' },
-  { key: 'token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
-  { key: 'dynamic-client', label: '6. Dynamic Client Registration' },
-  { key: 'par', label: '7. Pushed Authorization Request（PAR）' },
-  { key: 'device', label: '8. Device Code' },
-  { key: 'claims', label: '9. JWT Claims 差异' },
-  { key: 'scenes', label: '10. 场景说明' }
+  { path: '/pkce', label: '1. Authorization Code + PKCE' },
+  { path: '/m2m', label: '2. Client Credentials' },
+  { path: '/client-auth', label: '3. Client 认证方式差异' },
+  { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比' },
+  { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
+  { path: '/dynamic-client', label: '6. Dynamic Client Registration' },
+  { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
+  { path: '/device', label: '8. Device Code' },
+  { path: '/claims', label: '9. JWT Claims 差异' },
+  { path: '/scenarios', label: '10. 场景说明' }
 ]
 
 onMounted(async () => {
@@ -319,10 +358,10 @@ async function handleDelete(row) {
 }
 
 function handleNavSelect(index) {
-  if (index === 'clients') {
+  if (index === '/clients') {
     return
   }
-  router.push(index === 'pkce' ? '/flows' : `/flows?tab=${index}`)
+  router.push(index)
 }
 
 async function handleLogout() {
@@ -338,93 +377,431 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 
 <style scoped>
 .layout {
-  min-height: 100vh;
-  background: #f5f7fa;
-}
-.content-shell {
-  min-height: calc(100vh - 92px);
-  gap: 16px;
-}
-.side-nav {
-  width: 320px;
-  max-width: 100%;
-  background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 12px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
 }
-.side-nav-title {
-  padding: 18px 20px 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
-  border-bottom: 1px solid #ebeef5;
+
+.main-content {
+  padding: 8px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
 }
-.side-menu {
-  border-right: none;
-  overflow-x: hidden;
-  scrollbar-width: none;
+
+.content-shell {
+  height: 100%;
+  gap: 8px;
+  background: transparent;
 }
-.side-menu::-webkit-scrollbar {
-  display: none;
-}
-.content-main {
-  padding: 0;
-}
+
+/* Header Styles */
 .header {
-  background: #409eff;
+  height: 52px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 14px;
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.3);
+  position: relative;
+  z-index: 10;
 }
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
 .header-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-title {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fff;
+  letter-spacing: 0.3px;
 }
+
+.subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+  margin-left: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle::before {
+  content: '|';
+  margin-right: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.username {
+  font-weight: 500;
+}
+
+.logout-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Side Navigation */
+.side-nav {
+  width: 248px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.side-nav-header {
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+}
+
+.side-nav-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.side-nav-subtitle {
+  font-size: 11px;
+  color: #909399;
+}
+
+.side-menu {
+  border-right: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 6px;
+}
+
+.side-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.side-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+:deep(.el-menu-item) {
+  border-radius: 6px;
+  margin: 2px 0;
+  height: 38px;
+  line-height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-menu-item:hover) {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateX(2px);
+}
+
+:deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
 }
-.username {
-  font-size: 14px;
+
+:deep(.el-menu-item .el-icon) {
+  margin-right: 6px;
+  font-size: 15px;
 }
+
+/* Main Content Area */
+.content-main {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
 .toolbar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
+
+.toolbar-left {
+  display: flex;
+  gap: 8px;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 8px 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+}
+
+.refresh-btn {
+  padding: 8px 14px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+.table-container {
+  flex: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 8px;
+}
+
+.custom-table {
+  height: 100%;
+}
+
+:deep(.el-table__body-wrapper) {
+  overflow-y: auto;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar) {
+  width: 6px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+:deep(.el-table th) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 8px;
+}
+
+:deep(.custom-table .el-table__fixed-right th),
+:deep(.custom-table .el-table__fixed-right-patch) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+:deep(.custom-table .actions-col-header .cell) {
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+:deep(.el-table td) {
+  padding: 8px;
+  font-size: 13px;
+}
+
+:deep(.el-table__row) {
+  transition: all 0.3s ease;
+}
+
+:deep(.el-table__row:hover) {
+  background: rgba(102, 126, 234, 0.05);
+  transform: scale(1.01);
+}
+
 .action-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
-  white-space: nowrap;
 }
+
+.action-btn {
+  padding: 8px 16px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .tag-gap {
-  margin: 2px 2px;
+  margin: 2px;
+  border-radius: 4px;
+  font-weight: 500;
 }
+
+/* Dialog Styles */
+:deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+:deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px;
+  margin: 0;
+}
+
+:deep(.el-dialog__title) {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+:deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  background: #f8f9fa;
+  border-top: 1px solid #ebeef5;
+}
+
 .uri-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .side-nav {
+    width: 240px;
+  }
+
+  .table-container {
+    padding: 16px;
+  }
+}
+
 @media (max-width: 960px) {
   .content-shell {
     display: block;
-    min-height: auto;
+    height: auto;
+    overflow-y: auto;
   }
+
   .side-nav {
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    max-height: 300px;
+  }
+
+  .main-content {
+    height: auto;
+    overflow: visible;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .custom-table {
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+    height: 56px;
+  }
+
+  .header-title {
+    display: none;
+  }
+
+  .user-info {
+    display: none;
+  }
+
+  .main-content {
+    padding: 12px;
+    height: auto;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .toolbar-left {
+    flex-direction: column;
   }
 }
 </style>

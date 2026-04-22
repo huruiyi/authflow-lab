@@ -174,8 +174,8 @@ VALUES (
     '单页应用（PAR）',
     'none,client_secret_post',
     'authorization_code,refresh_token',
-    'http://localhost:5173/callback,http://127.0.0.1:5173/callback,http://192.168.1.23:5173/callback',
-    'http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.23:5173',
+    'http://authlab.test:5173/callback',
+    'http://authlab.test:5173',
     'openid,profile,email,read,write',
     @cs_pkce_par,
     @ts_default

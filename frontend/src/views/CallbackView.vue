@@ -21,7 +21,7 @@
         />
 
         <div v-if="error" class="actions">
-          <el-button type="primary" @click="goFlows">进入 OAuth2 场景演示</el-button>
+          <el-button type="primary" @click="goFlows">返回功能演示</el-button>
           <el-button @click="goClients">返回 Client 管理</el-button>
         </div>
 
@@ -45,7 +45,7 @@
           </el-descriptions>
 
           <div class="actions">
-            <el-button type="primary" @click="goFlows">进入 OAuth2 场景演示</el-button>
+            <el-button type="primary" @click="goFlows">返回功能演示</el-button>
             <el-button @click="goClients">返回 Client 管理</el-button>
           </div>
         </div>
@@ -145,7 +145,7 @@ onMounted(async () => {
 })
 
 function goFlows() {
-  const returnTo = sessionStorage.getItem('oauth2_return_to') || '/flows'
+  const returnTo = sessionStorage.getItem('oauth2_return_to') || '/pkce'
   sessionStorage.removeItem('oauth2_return_to')
   router.push(returnTo)
 }
