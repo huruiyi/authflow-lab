@@ -137,7 +137,8 @@ async function startTokenLifecycleLogin(mode) {
     scope: 'openid profile email read write',
     usePkce: true,
     scenario: useRotationPolicy ? 'token-lifecycle-rotation' : 'token-lifecycle-default',
-    returnTo: '/token-lifecycle'
+    returnTo: '/token-lifecycle',
+    openInNewWindow: true
   })
 }
 

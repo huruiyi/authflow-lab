@@ -63,22 +63,16 @@ public class SecurityConfig {
               Set<String> scopes = context.getAuthorization().getAuthorizedScopes();
 
               Map<String, Object> claims = new HashMap<>();
-              claims.put("sub", username);
-              claims.put("preferred_username", username);
-              claims.put("name", "Demo User " + username);
-              claims.put("updated_at", java.time.Instant.now().getEpochSecond());
-
-              if (scopes.contains(OidcScopes.EMAIL)) {
-                claims.put("email", username + "@demo.local");
-                claims.put("email_verified", true);
-              }
               if (scopes.contains(OidcScopes.PROFILE)) {
+                claims.put("preferred_username", username);
+                claims.put("name", "Demo User " + username);
                 claims.put("locale", "zh-CN");
                 claims.put("zoneinfo", "Asia/Shanghai");
+                if (user.getAuthorities() != null) {
+                  claims.put("authorities", user.getAuthorities().stream().map(a -> a.getAuthority()).toList());
+                }
               }
-              if (user.getAuthorities() != null) {
-                claims.put("authorities", user.getAuthorities().stream().map(a -> a.getAuthority()).toList());
-              }
+              claims.put("updated_at", java.time.Instant.now().getEpochSecond());
               return new OidcUserInfo(claims);
             })))
         )

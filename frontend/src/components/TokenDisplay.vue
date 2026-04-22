@@ -3,17 +3,17 @@
     <template #header>
       <span>{{ title }}</span>
     </template>
-    <el-descriptions :column="1" border>
-      <el-descriptions-item label="access_token">
-        <div class="token-box">{{ maskedAccessToken || '暂无' }}</div>
+    <el-descriptions :column="1" border class="token-descriptions">
+      <el-descriptions-item label="access_token" label-class-name="token-label-cell">
+        <div class="token-box">{{ accessToken || '暂无' }}</div>
       </el-descriptions-item>
-      <el-descriptions-item label="refresh_token">
-        <div class="token-box">{{ maskedRefreshToken || '暂无' }}</div>
+      <el-descriptions-item label="refresh_token" label-class-name="token-label-cell">
+        <div class="token-box">{{ refreshToken || '暂无' }}</div>
       </el-descriptions-item>
-      <el-descriptions-item label="id_token">
-        <div class="token-box">{{ maskedIdToken || '暂无' }}</div>
+      <el-descriptions-item label="id_token" label-class-name="token-label-cell">
+        <div class="token-box">{{ idToken || '暂无' }}</div>
       </el-descriptions-item>
-      <el-descriptions-item label="scope">
+      <el-descriptions-item label="scope" label-class-name="token-label-cell">
         <el-tag
           v-for="s in scopeList"
           :key="s"
@@ -23,7 +23,13 @@
         >{{ s }}</el-tag>
         <span v-if="!scopeList.length" class="no-data">暂无</span>
       </el-descriptions-item>
-      <el-descriptions-item v-if="showExpiry" label="access_token 剩余时间">
+      <el-descriptions-item v-if="tokenType" label="token_type" label-class-name="token-label-cell">
+        <span>{{ tokenType }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item v-if="expiresInDisplay" label="expires_in" label-class-name="token-label-cell">
+        <span>{{ expiresInDisplay }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item v-if="showExpiry" label="access_token 剩余时间" label-class-name="token-label-cell">
         <span :class="expiryClass">{{ remainingTimeDisplay }}</span>
       </el-descriptions-item>
     </el-descriptions>
@@ -31,8 +37,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { maskToken, getTokenRemainingSeconds } from '../utils/tokenHelper'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { getTokenRemainingSeconds } from '../utils/tokenHelper'
 import { splitScopeString } from '../utils/oauth2Helper'
 
 const props = defineProps({
@@ -56,11 +62,22 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  tokenType: {
+    type: String,
+    default: ''
+  },
+  expiresIn: {
+    type: [String, Number],
+    default: ''
+  },
   showExpiry: {
     type: Boolean,
     default: false
   }
 })
+
+const nowTimestamp = ref(Date.now())
+let countdownTimer = null
 
 const maskedAccessToken = computed(() => maskToken(props.accessToken))
 const maskedRefreshToken = computed(() => maskToken(props.refreshToken))
@@ -71,7 +88,33 @@ const scopeList = computed(() => {
   return splitScopeString(props.scope)
 })
 
-const remainingSeconds = computed(() => getTokenRemainingSeconds())
+onMounted(() => {
+  if (!props.showExpiry) {
+    return
+  }
+  countdownTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 1000)
+})
+
+onBeforeUnmount(() => {
+  if (countdownTimer) {
+    window.clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
+
+const expiresInDisplay = computed(() => {
+  if (props.expiresIn === '' || props.expiresIn === null || props.expiresIn === undefined) {
+    return ''
+  }
+  return `${props.expiresIn} 秒`
+})
+
+const remainingSeconds = computed(() => {
+  nowTimestamp.value
+  return getTokenRemainingSeconds()
+})
 
 const remainingTimeDisplay = computed(() => {
   if (remainingSeconds.value === null) {
@@ -94,6 +137,12 @@ const expiryClass = computed(() => {
 <style scoped>
 .token-card {
   border-radius: 12px;
+}
+
+.token-descriptions :deep(.token-label-cell.el-descriptions__cell) {
+  width: 160px;
+  min-width: 160px;
+  white-space: nowrap;
 }
 
 .token-box {

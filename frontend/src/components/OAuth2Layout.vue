@@ -33,10 +33,6 @@
               <el-icon><Document /></el-icon>
               <span>{{ item.label }}</span>
             </el-menu-item>
-            <el-menu-item index="/clients">
-              <el-icon><Setting /></el-icon>
-              <span>11. Client 管理</span>
-            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -67,7 +63,9 @@ const navItems = [
   { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
   { path: '/device', label: '8. Device Code' },
   { path: '/claims', label: '9. JWT Claims 差异' },
-  { path: '/scenarios', label: '10. 场景说明' }
+  { path: '/scenarios', label: '10. 场景说明' },
+  { path: '/clients', label: '11. Client 管理' },
+  { path: '/flows-demo', label: 'Flows Demo', newWindow: true }
 ]
 
 const currentRoute = computed(() => route.path)
@@ -78,6 +76,11 @@ const currentTitle = computed(() => {
 })
 
 function handleNavSelect(path) {
+  const item = navItems.find(i => i.path === path)
+  if (item?.newWindow) {
+    window.open(path, '_blank')
+    return
+  }
   if (path !== route.path) {
     router.push(path)
   }

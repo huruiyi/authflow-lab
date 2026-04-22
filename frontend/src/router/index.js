@@ -12,6 +12,7 @@ import ParFlowView from '../views/ParFlowView.vue'
 import DeviceFlowView from '../views/DeviceFlowView.vue'
 import JwtClaimsView from '../views/JwtClaimsView.vue'
 import ScenariosView from '../views/ScenariosView.vue'
+import FlowsDemo from '../views/FlowsDemo.vue'
 import CallbackView from '../views/CallbackView.vue'
 import ConsentView from '../views/ConsentView.vue'
 import DeviceVerificationView from '../views/DeviceVerificationView.vue'
@@ -35,6 +36,7 @@ const routes = [
   { path: '/device', component: DeviceFlowView, meta: { requiresAuth: true, title: 'Device Code Flow' } },
   { path: '/claims', component: JwtClaimsView, meta: { requiresAuth: true, title: 'JWT Claims 差异' } },
   { path: '/scenarios', component: ScenariosView, meta: { requiresAuth: true, title: '场景说明' } },
+  { path: '/flows-demo', component: FlowsDemo, meta: { requiresAuth: true, title: 'Flows Demo' } },
 
   // 管理页面
   { path: '/clients', component: ClientManagement, meta: { requiresAuth: true, title: 'Client 管理' } },
