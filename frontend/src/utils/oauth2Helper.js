@@ -4,7 +4,9 @@
  */
 
 import { generatePkcePair, generateRandomString } from '../composables/pkce'
-import { saveTokens } from './tokenHelper'
+
+export const DEFAULT_OAUTH2_SYNC_CHANNEL = 'oauth2-token-sync'
+export const OAUTH2_SYNC_EVENT = 'oauth2-callback-complete'
 
 /**
  * 获取授权服务器地址
@@ -12,6 +14,121 @@ import { saveTokens } from './tokenHelper'
  */
 export function getAuthServerOrigin() {
   return import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:30000`
+}
+
+export function prepareOAuth2Redirect({
+  clientId,
+  usePkce,
+  scenario,
+  returnTo,
+  syncChannel = DEFAULT_OAUTH2_SYNC_CHANNEL,
+  syncTarget = ''
+}, {
+  state,
+  codeVerifier = ''
+}) {
+  sessionStorage.setItem('oauth2_state', state)
+  sessionStorage.setItem('pkce_mode', usePkce ? 'required' : 'disabled')
+  sessionStorage.setItem('oauth2_demo_scenario', scenario)
+  sessionStorage.setItem('oauth2_client_id', clientId)
+  sessionStorage.setItem('oauth2_return_to', returnTo)
+  sessionStorage.setItem('oauth2_sync_channel', syncChannel)
+  sessionStorage.setItem('oauth2_sync_target', syncTarget)
+
+  if (usePkce) {
+    sessionStorage.setItem('pkce_code_verifier', codeVerifier)
+    return
+  }
+
+  sessionStorage.removeItem('pkce_code_verifier')
+}
+
+export function readOAuth2SyncContext() {
+  return {
+    syncChannel: sessionStorage.getItem('oauth2_sync_channel') || DEFAULT_OAUTH2_SYNC_CHANNEL,
+    syncTarget: sessionStorage.getItem('oauth2_sync_target') || '',
+    clientId: sessionStorage.getItem('oauth2_client_id') || 'spa-public-client',
+    demoScenario: sessionStorage.getItem('oauth2_demo_scenario') || ''
+  }
+}
+
+export function clearOAuth2RedirectContext() {
+  sessionStorage.removeItem('oauth2_state')
+  sessionStorage.removeItem('pkce_code_verifier')
+  sessionStorage.removeItem('pkce_mode')
+  sessionStorage.removeItem('oauth2_demo_scenario')
+  sessionStorage.removeItem('oauth2_sync_channel')
+  sessionStorage.removeItem('oauth2_sync_target')
+}
+
+export function buildOAuth2SyncPayload(data, overrides = {}) {
+  const context = readOAuth2SyncContext()
+  return {
+    access_token: data.access_token || '',
+    id_token: data.id_token || '',
+    refresh_token: data.refresh_token || '',
+    scope: data.scope || '',
+    expires_in: data.expires_in || 0,
+    client_id: context.clientId,
+    syncTarget: context.syncTarget || (context.demoScenario === 'claims-user-login' ? 'claims' : ''),
+    ...overrides
+  }
+}
+
+export function broadcastOAuth2Sync(data, overrides = {}) {
+  const { syncChannel } = readOAuth2SyncContext()
+  const payload = buildOAuth2SyncPayload(data, overrides)
+
+  if (typeof BroadcastChannel !== 'undefined') {
+    const channel = new BroadcastChannel(syncChannel)
+    channel.postMessage({ type: OAUTH2_SYNC_EVENT, payload })
+    channel.close()
+    return payload
+  }
+
+  localStorage.setItem(syncChannel, JSON.stringify({
+    type: OAUTH2_SYNC_EVENT,
+    payload,
+    timestamp: Date.now()
+  }))
+  localStorage.removeItem(syncChannel)
+  return payload
+}
+
+export function createOAuth2SyncListener(syncChannel, onPayload) {
+  let channel = null
+
+  const handleMessage = message => {
+    if (message?.type === OAUTH2_SYNC_EVENT) {
+      onPayload(message.payload)
+    }
+  }
+
+  const handleStorage = event => {
+    if (event.key !== syncChannel || !event.newValue) {
+      return
+    }
+
+    try {
+      handleMessage(JSON.parse(event.newValue))
+    } catch {
+      // ignore malformed sync payload
+    }
+  }
+
+  if (typeof BroadcastChannel !== 'undefined') {
+    channel = new BroadcastChannel(syncChannel)
+    channel.onmessage = event => {
+      handleMessage(event.data)
+    }
+  } else {
+    window.addEventListener('storage', handleStorage)
+  }
+
+  return () => {
+    channel?.close()
+    window.removeEventListener('storage', handleStorage)
+  }
 }
 
 /**
@@ -23,7 +140,7 @@ export function getAuthServerOrigin() {
  * @param {string} options.scenario - 场景标识
  * @param {string} options.returnTo - 授权后返回的路径
  */
-export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = true, scenario = 'default', returnTo = '/pkce' }) {
+export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = true, scenario = 'default', returnTo = '/pkce', openInNewWindow = false, syncChannel = DEFAULT_OAUTH2_SYNC_CHANNEL, syncTarget = '' }) {
   const frontendOrigin = window.location.origin
   const redirectUri = `${frontendOrigin}/callback`
   const state = generateRandomString(32)
@@ -36,16 +153,17 @@ export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = tr
     codeChallenge = pkcePair.codeChallenge
   }
 
-  sessionStorage.setItem('oauth2_state', state)
-  sessionStorage.setItem('pkce_mode', usePkce ? 'required' : 'disabled')
-  sessionStorage.setItem('oauth2_demo_scenario', scenario)
-  if (usePkce) {
-    sessionStorage.setItem('pkce_code_verifier', codeVerifier)
-  } else {
-    sessionStorage.removeItem('pkce_code_verifier')
-  }
-  sessionStorage.setItem('oauth2_client_id', clientId)
-  sessionStorage.setItem('oauth2_return_to', returnTo)
+  prepareOAuth2Redirect({
+    clientId,
+    usePkce,
+    scenario,
+    returnTo,
+    syncChannel,
+    syncTarget
+  }, {
+    state,
+    codeVerifier
+  })
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -61,7 +179,12 @@ export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = tr
   }
 
   const authServerOrigin = getAuthServerOrigin()
-  window.location.href = `${authServerOrigin}/oauth2/authorize?${params.toString()}`
+  const authorizeUrl = `${authServerOrigin}/oauth2/authorize?${params.toString()}`
+  if (openInNewWindow) {
+    window.open(authorizeUrl, '_blank')
+    return
+  }
+  window.location.href = authorizeUrl
 }
 
 /**

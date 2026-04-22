@@ -6,6 +6,7 @@
         <span class="title">OAuth2 真实使用场景演示</span>
       </div>
       <div class="header-right">
+        <el-button size="small" @click="goClients">Client 管理</el-button>
         <el-button type="default" size="small" @click="handleLogout">退出</el-button>
       </div>
     </el-header>
@@ -18,7 +19,6 @@
             <el-menu-item v-for="item in flowNavItems" :key="item.key" :index="item.key">
               {{ item.label }}
             </el-menu-item>
-            <el-menu-item index="clients">11. Client 管理</el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -38,18 +38,16 @@
             <el-button @click="loadJwks">查看 JWK Set</el-button>
           </div>
 
-          <el-card shadow="never" class="mt16">
-            <template #header><span>当前 Token</span></template>
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="access_token">
-                <div class="token-box">{{ accessToken || '暂无' }}</div>
-              </el-descriptions-item>
-              <el-descriptions-item label="refresh_token">
-                <div class="token-box">{{ refreshToken || '暂无' }}</div>
-              </el-descriptions-item>
-              <el-descriptions-item label="scope">{{ currentScope || '暂无' }}</el-descriptions-item>
-            </el-descriptions>
-          </el-card>
+          <TokenDisplay
+            :access-token="accessToken"
+            :refresh-token="refreshToken"
+            :id-token="idToken"
+            :scope="currentScope"
+            :token-type="'Bearer'"
+            :expires-in="tokenExpiresIn"
+            :show-expiry="true"
+            title="当前 Token"
+          />
 
           <div class="actions-row mt16">
             <el-button @click="callPublic">访问公开资源</el-button>
@@ -455,7 +453,7 @@
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
             <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
-            <el-descriptions-item label="准备条件">先完成一次 PKCE 登录，再获取一次 Client Credentials token，下面的对比表才会完整</el-descriptions-item>
+            <el-descriptions-item label="当前方式">本页可直接生成对比所需 token，无需依赖其他 demo 先完成登录或取 token</el-descriptions-item>
           </el-descriptions>
 
           <el-alert
@@ -467,6 +465,8 @@
           />
 
           <div class="actions-row">
+            <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
+            <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
             <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
           </div>
 
@@ -478,8 +478,9 @@
                   <el-descriptions-item label="状态">{{ decodedUserAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
                   <el-descriptions-item label="sub">{{ summarizeClaim(decodedUserAccessToken?.payload?.sub) }}</el-descriptions-item>
                   <el-descriptions-item label="scope">{{ summarizeClaim(decodedUserAccessToken?.payload?.scope) }}</el-descriptions-item>
-                  <el-descriptions-item label="client_id">{{ summarizeClaim(decodedUserAccessToken?.payload?.client_id) }}</el-descriptions-item>
-                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(accessToken) || '暂无' }}</div> </el-descriptions-item>
+                  <el-descriptions-item label="client_id">{{ claimsState.userClientId || 'spa-public-client' }}</el-descriptions-item>
+                  <el-descriptions-item label="scope">{{ claimsState.userScope || '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ claimsState.userAccessToken || '暂无' }}</div> </el-descriptions-item>
                 </el-descriptions>
               </el-card>
             </el-col>
@@ -491,7 +492,8 @@
                   <el-descriptions-item label="sub">{{ summarizeClaim(decodedIdToken?.payload?.sub) }}</el-descriptions-item>
                   <el-descriptions-item label="aud">{{ summarizeClaim(decodedIdToken?.payload?.aud) }}</el-descriptions-item>
                   <el-descriptions-item label="preferred_username">{{ summarizeClaim(decodedIdToken?.payload?.preferred_username) }}</el-descriptions-item>
-                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(idToken) || '暂无' }}</div> </el-descriptions-item>
+                  <el-descriptions-item label="scope">{{ claimsState.userScope || '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ claimsState.userIdToken || '暂无' }}</div> </el-descriptions-item>
                 </el-descriptions>
               </el-card>
             </el-col>
@@ -502,8 +504,9 @@
                   <el-descriptions-item label="状态">{{ decodedMachineAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
                   <el-descriptions-item label="sub">{{ summarizeClaim(decodedMachineAccessToken?.payload?.sub) }}</el-descriptions-item>
                   <el-descriptions-item label="scope">{{ summarizeClaim(decodedMachineAccessToken?.payload?.scope) }}</el-descriptions-item>
-                  <el-descriptions-item label="client_id">{{ summarizeClaim(decodedMachineAccessToken?.payload?.client_id) }}</el-descriptions-item>
-                  <el-descriptions-item label="token"> <div class="token-box">{{ maskToken(m2mLifecycleToken) || '暂无' }}</div> </el-descriptions-item>
+                  <el-descriptions-item label="client_id">{{ claimsState.machineClientId || 'm2m-service-client' }}</el-descriptions-item>
+                  <el-descriptions-item label="scope">{{ claimsState.machineScope || '暂无' }}</el-descriptions-item>
+                  <el-descriptions-item label="token"> <div class="token-box">{{ claimsState.machineAccessToken || '暂无' }}</div> </el-descriptions-item>
                 </el-descriptions>
               </el-card>
             </el-col>
@@ -573,9 +576,25 @@ import { ElMessage } from 'element-plus'
 import { Connection } from '@element-plus/icons-vue'
 import { authApi } from '../api/auth'
 import { oauth2Api } from '../api/oauth2'
-import { generatePkcePair, generateRandomString } from '../composables/pkce'
+import {
+  buildDynamicClientId,
+  createOAuth2SyncListener,
+  generateBasicAuth,
+  getAuthServerOrigin,
+  handleOAuth2Error,
+  prepareOAuth2Redirect,
+  splitScopeString,
+  startAuthorizationCodeFlow as startAuthorizationCodeFlowHelper
+} from '../utils/oauth2Helper'
+import { getTokenState, saveTokens, clearTokens } from '../utils/tokenHelper'
+import TokenDisplay from '../components/TokenDisplay.vue'
 
-const authServerOrigin = import.meta.env.VITE_BACKEND_ORIGIN || `${window.location.protocol}//${window.location.hostname}:30000`
+const oauth2SyncChannel = 'oauth2-token-sync-flows-demo'
+const claimsSyncChannel = 'oauth2-token-sync-flows-demo-claims'
+let disposeTokenSync = null
+let disposeClaimsSync = null
+
+const authServerOrigin = getAuthServerOrigin()
 
 const m2mClients = [
   {
@@ -643,10 +662,11 @@ const route = useRoute()
 const router = useRouter()
 const activeTab = ref(flowTabNames.includes(route.query.tab) ? route.query.tab : 'pkce')
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
-const accessToken = ref(sessionStorage.getItem('oauth2_access_token') || '')
-const idToken = ref(sessionStorage.getItem('oauth2_id_token') || '')
-const refreshToken = ref(sessionStorage.getItem('oauth2_refresh_token') || '')
-const currentScope = ref(sessionStorage.getItem('oauth2_scope') || '')
+const tokenState = reactive(getTokenState())
+const accessToken = computed(() => tokenState.accessToken)
+const idToken = computed(() => tokenState.idToken)
+const refreshToken = computed(() => tokenState.refreshToken)
+const currentScope = computed(() => tokenState.scope)
 const m2mToken = ref('')
 const m2mLastIssuedToken = ref('')
 const deviceAuth = ref({})
@@ -712,6 +732,18 @@ const tokenLifecycleState = reactive({
   previousRefreshToken: '',
   lastRefreshOutcome: '',
   policyHint: '默认可直接复用当前会话。若要对比轮换策略，请点“登录轮换策略”。'
+})
+
+const claimsState = reactive({
+  userAccessToken: '',
+  userIdToken: '',
+  userRefreshToken: '',
+  userScope: '',
+  machineAccessToken: '',
+  machineScope: '',
+  userClientId: 'spa-public-client',
+  machineClientId: 'm2m-service-client',
+  lastSource: ''
 })
 
 const nowTimestamp = ref(Date.now())
@@ -815,6 +847,7 @@ const tokenLifecycleRemainingSecondsDisplay = computed(() => {
   }
   return `${tokenLifecycleRemainingSeconds.value} 秒`
 })
+const tokenExpiresIn = computed(() => sessionStorage.getItem('oauth2_access_token_expires_in') || '')
 
 watch(activeTab, (tab) => {
   if (tab === 'token-lifecycle') {
@@ -837,9 +870,9 @@ function handleNavSelect(index) {
   activeTab.value = index
 }
 
-const decodedUserAccessToken = computed(() => decodeJwt(accessToken.value))
-const decodedIdToken = computed(() => decodeJwt(idToken.value))
-const decodedMachineAccessToken = computed(() => decodeJwt(m2mLifecycleToken.value))
+const decodedUserAccessToken = computed(() => decodeJwt(claimsState.userAccessToken))
+const decodedIdToken = computed(() => decodeJwt(claimsState.userIdToken))
+const decodedMachineAccessToken = computed(() => decodeJwt(claimsState.machineAccessToken))
 const hasAnyJwtForComparison = computed(() => Boolean(
   decodedUserAccessToken.value || decodedIdToken.value || decodedMachineAccessToken.value
 ))
@@ -861,13 +894,45 @@ const claimsComparisonRows = computed(() => {
     buildClaimsRow('sid', userClaims.sid, idClaims.sid, machineClaims.sid)
   ]
 })
-const claimsHighlights = computed(() => buildClaimsHighlights({
-  userAccessToken: decodedUserAccessToken.value,
-  idToken: decodedIdToken.value,
-  machineAccessToken: decodedMachineAccessToken.value
-}))
+function applySyncedTokens(payload) {
+  if (payload?.syncTarget === 'claims') {
+    claimsState.userAccessToken = payload.access_token || ''
+    claimsState.userIdToken = payload.id_token || ''
+    claimsState.userRefreshToken = payload.refresh_token || ''
+    claimsState.userScope = payload.scope || ''
+    claimsState.userClientId = payload.client_id || 'spa-public-client'
+    claimsState.lastSource = 'claims-user-login'
+    result.value = {
+      operation: 'oauth2_callback_sync_claims',
+      message: 'Demo 9 已同步新窗口中的用户 Token。',
+      scope: payload.scope,
+      expires_in: payload.expires_in,
+      refresh_token: payload.refresh_token ? '已返回' : '无'
+    }
+    ElMessage.success('Demo 9 用户 Token 已同步')
+    return
+  }
+
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  loadTokenLifecycleFromCurrentSession()
+  result.value = {
+    operation: 'oauth2_callback_sync',
+    message: '已同步新窗口授权结果。',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    refresh_token: payload.refresh_token ? '已返回' : '无'
+  }
+}
+
+function syncTokenStateFromStorage() {
+  Object.assign(tokenState, getTokenState())
+}
 
 onMounted(() => {
+  Object.assign(tokenState, getTokenState())
+  disposeTokenSync = createOAuth2SyncListener(oauth2SyncChannel, applySyncedTokens)
+  disposeClaimsSync = createOAuth2SyncListener(claimsSyncChannel, applySyncedTokens)
   lifecycleTimer = window.setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 1000)
@@ -876,6 +941,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   devicePollingAborted = true
+  disposeTokenSync?.()
+  disposeClaimsSync?.()
   if (lifecycleTimer) {
     window.clearInterval(lifecycleTimer)
     lifecycleTimer = null
@@ -887,7 +954,8 @@ async function startPkceFlow() {
     clientId: 'spa-public-client',
     scope: 'openid profile email read write',
     usePkce: true,
-    scenario: 'pkce'
+    scenario: 'pkce',
+    openInNewWindow: true
   })
 }
 
@@ -902,8 +970,60 @@ async function startScopeConsentDemo() {
     clientId: 'spa-consent-client',
     scope: 'openid profile email read write',
     usePkce: true,
-    scenario: 'pkce-consent'
+    scenario: 'pkce-consent',
+    openInNewWindow: true
   })
+}
+
+async function startClaimsUserLogin() {
+  claimsState.lastSource = 'claims-user-login'
+  result.value = {
+    operation: 'claims_user_login_prepare',
+    clientId: 'spa-public-client',
+    scope: 'openid profile email read write',
+    message: '即将为 Demo 9 在新窗口中发起用户授权，完成后会把 access_token 与 id_token 同步回当前页。'
+  }
+
+  await startAuthorizationCodeFlow({
+    clientId: 'spa-public-client',
+    scope: 'openid profile email read write',
+    usePkce: true,
+    scenario: 'claims-user-login',
+    openInNewWindow: true,
+    syncChannel: claimsSyncChannel,
+    syncTarget: 'claims',
+    returnTo: '/flows?tab=claims'
+  })
+}
+
+async function getClaimsMachineToken() {
+  try {
+    const clientId = 'm2m-service-client'
+    const clientSecret = 'm2m-secret'
+    const scope = 'read write'
+    const basic = btoa(`${clientId}:${clientSecret}`)
+    const { data } = await oauth2Api.clientCredentials({
+      grant_type: 'client_credentials',
+      scope
+    }, {
+      Authorization: `Basic ${basic}`
+    })
+
+    claimsState.machineAccessToken = data.access_token || ''
+    claimsState.machineScope = data.scope || scope
+    claimsState.machineClientId = clientId
+    claimsState.lastSource = 'claims-machine-token'
+    result.value = {
+      operation: 'claims_machine_token',
+      clientId,
+      requestedScope: scope,
+      response: data,
+      message: 'Demo 9 已单独获取机器 Token。'
+    }
+    ElMessage.success('Demo 9 机器 Token 获取成功')
+  } catch (e) {
+    showError(e)
+  }
 }
 
 async function startPkceControlFlow() {
@@ -959,7 +1079,8 @@ async function startTokenLifecycleLogin(mode) {
     clientId,
     scope: 'openid profile email read write',
     usePkce: true,
-    scenario: useRotationPolicy ? 'token-lifecycle-rotation' : 'token-lifecycle-default'
+    scenario: useRotationPolicy ? 'token-lifecycle-rotation' : 'token-lifecycle-default',
+    openInNewWindow: true
   })
 }
 
@@ -1049,12 +1170,16 @@ async function startParFlow() {
     const state = generateRandomString(32)
     const pkcePair = await generatePkcePair()
 
-    sessionStorage.setItem('oauth2_state', state)
-    sessionStorage.setItem('pkce_mode', 'required')
-    sessionStorage.setItem('pkce_code_verifier', pkcePair.codeVerifier)
-    sessionStorage.setItem('oauth2_demo_scenario', 'par')
-    sessionStorage.setItem('oauth2_client_id', parForm.clientId)
-    sessionStorage.setItem('oauth2_return_to', '/flows?tab=par')
+    prepareOAuth2Redirect({
+      clientId: parForm.clientId,
+      usePkce: true,
+      scenario: 'par',
+      returnTo: '/flows?tab=par',
+      syncChannel: oauth2SyncChannel
+    }, {
+      state,
+      codeVerifier: pkcePair.codeVerifier
+    })
 
     const { data } = await oauth2Api.pushedAuthorization({
       response_type: 'code',
@@ -1081,51 +1206,33 @@ async function startParFlow() {
       client_id: parForm.clientId,
       request_uri: data.request_uri
     })
-    window.location.href = `${authServerOrigin}/oauth2/authorize?${authorizeParams.toString()}`
+    window.open(`${authServerOrigin}/oauth2/authorize?${authorizeParams.toString()}`, '_blank')
   } catch (e) {
     parState.lastStatus = 'PAR 请求失败'
     showError(e)
   }
 }
 
-async function startAuthorizationCodeFlow({ clientId, scope, usePkce = true, scenario = 'default' }) {
-  const frontendOrigin = window.location.origin
-  const redirectUri = `${frontendOrigin}/callback`
-  const state = generateRandomString(32)
-  let codeVerifier = ''
-  let codeChallenge = ''
-
-  if (usePkce) {
-    const pkcePair = await generatePkcePair()
-    codeVerifier = pkcePair.codeVerifier
-    codeChallenge = pkcePair.codeChallenge
-  }
-
-  sessionStorage.setItem('oauth2_state', state)
-  sessionStorage.setItem('pkce_mode', usePkce ? 'required' : 'disabled')
-  sessionStorage.setItem('oauth2_demo_scenario', scenario)
-  if (usePkce) {
-    sessionStorage.setItem('pkce_code_verifier', codeVerifier)
-  } else {
-    sessionStorage.removeItem('pkce_code_verifier')
-  }
-  sessionStorage.setItem('oauth2_client_id', clientId)
-  sessionStorage.setItem('oauth2_return_to', `/flows${activeTab.value === 'pkce' ? '' : `?tab=${activeTab.value}`}`)
-
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: clientId,
-    redirect_uri: redirectUri,
+async function startAuthorizationCodeFlow({
+  clientId,
+  scope,
+  usePkce = true,
+  scenario = 'default',
+  openInNewWindow = false,
+  syncChannel = oauth2SyncChannel,
+  syncTarget = '',
+  returnTo = `/flows${activeTab.value === 'pkce' ? '' : `?tab=${activeTab.value}`}`
+}) {
+  await startAuthorizationCodeFlowHelper({
+    clientId,
     scope,
-    state
+    usePkce,
+    scenario,
+    openInNewWindow,
+    syncChannel,
+    syncTarget,
+    returnTo
   })
-
-  if (usePkce) {
-    params.set('code_challenge', codeChallenge)
-    params.set('code_challenge_method', 'S256')
-  }
-
-  window.location.href = `${authServerOrigin}/oauth2/authorize?${params.toString()}`
 }
 
 async function loadDiscovery() {
@@ -1213,17 +1320,8 @@ async function doRefreshToken() {
       client_id: clientId,
       refresh_token: refreshToken.value
     })
-    accessToken.value = data.access_token
-    sessionStorage.setItem('oauth2_access_token', data.access_token)
-    persistAccessTokenExpiryMetadata(data.expires_in)
-    if (data.refresh_token) {
-      refreshToken.value = data.refresh_token
-      sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
-    }
-    if (data.scope) {
-      currentScope.value = data.scope
-      sessionStorage.setItem('oauth2_scope', data.scope)
-    }
+    saveTokens(data)
+    syncTokenStateFromStorage()
     result.value = data
     tokenLifecycleState.previousRefreshToken = previousRefreshToken
     tokenLifecycleState.lastRefreshOutcome = data.refresh_token && data.refresh_token !== previousRefreshToken
@@ -1292,15 +1390,8 @@ async function startOidcLogout() {
     endSessionUrl.searchParams.set('post_logout_redirect_uri', window.location.origin)
 
     sessionStorage.setItem('oauth2_oidc_logout_message', '1')
-
-    sessionStorage.removeItem('oauth2_access_token')
-    sessionStorage.removeItem('oauth2_id_token')
-    sessionStorage.removeItem('oauth2_refresh_token')
-    sessionStorage.removeItem('oauth2_scope')
-    accessToken.value = ''
-    idToken.value = ''
-    refreshToken.value = ''
-    currentScope.value = ''
+    clearTokens()
+    syncTokenStateFromStorage()
 
     window.location.href = endSessionUrl.toString()
   } catch (e) {
@@ -1537,18 +1628,9 @@ async function pollDeviceToken() {
           Authorization: `Basic ${basic}`
         })
         result.value = data
-        if (data.access_token) {
-          accessToken.value = data.access_token
-          sessionStorage.setItem('oauth2_access_token', data.access_token)
-          persistAccessTokenExpiryMetadata(data.expires_in)
-        }
-        if (data.refresh_token) {
-          refreshToken.value = data.refresh_token
-          sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
-        }
-        if (data.scope) {
-          currentScope.value = data.scope
-          sessionStorage.setItem('oauth2_scope', data.scope)
+        if (data.access_token || data.refresh_token || data.id_token || data.scope || data.expires_in) {
+          saveTokens(data)
+          syncTokenStateFromStorage()
         }
         ElMessage.success('设备授权成功，已获取 Token')
         return
@@ -1597,6 +1679,10 @@ async function pollDeviceToken() {
   } finally {
     isPollingDeviceToken.value = false
   }
+}
+
+function goClients() {
+  router.push('/clients')
 }
 
 async function handleLogout() {
@@ -1701,7 +1787,7 @@ function buildClaimsHighlights({ userAccessToken, idToken: decodedIdTokenValue, 
   }
 
   if (!highlights.length) {
-    highlights.push('先完成一次 PKCE 登录或获取一次 M2M token，再观察三类 JWT 的 claims 差异。')
+    highlights.push('先在当前 Demo 9 中获取用户 Token 或机器 Token，再观察三类 JWT 的 claims 差异。')
   }
 
   return highlights
@@ -1800,22 +1886,6 @@ function writeParSummary() {
   }
 }
 
-function buildDynamicClientId() {
-  return `dynamic-spa-${Date.now().toString().slice(-8)}`
-}
-
-function splitScopeString(scopeText) {
-  if (!scopeText) {
-    return ['openid', 'profile']
-  }
-  const scopes = scopeText
-    .split(/\s+/)
-    .map(item => item.trim())
-    .filter(Boolean)
-
-  return scopes.length > 0 ? scopes : ['openid', 'profile']
-}
-
 function persistAccessTokenExpiryMetadata(expiresInSeconds) {
   if (!expiresInSeconds) {
     return
@@ -1897,12 +1967,6 @@ function getDevicePollingIntervalMs(intervalSeconds) {
     ? parsedInterval
     : DEFAULT_DEVICE_INTERVAL_SECONDS
   return safeInterval * 1000
-}
-
-function delay(ms) {
-  return new Promise(resolve => {
-    window.setTimeout(resolve, ms)
-  })
 }
 </script>
 

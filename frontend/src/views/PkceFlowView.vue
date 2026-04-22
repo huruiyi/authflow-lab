@@ -21,6 +21,9 @@
         :refresh-token="tokenState.refreshToken"
         :id-token="tokenState.idToken"
         :scope="tokenState.scope"
+        :token-type="'Bearer'"
+        :expires-in="getExpiresInValue()"
+        :show-expiry="true"
         title="当前 Token"
       />
 
@@ -43,21 +46,33 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import TokenDisplay from '../components/TokenDisplay.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { startAuthorizationCodeFlow, handleOAuth2Error } from '../utils/oauth2Helper'
+import { startAuthorizationCodeFlow, handleOAuth2Error, createOAuth2SyncListener } from '../utils/oauth2Helper'
 import { saveTokens } from '../utils/tokenHelper'
 import { getTokenState, clearTokens } from '../utils/tokenHelper'
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const tokenState = reactive(getTokenState())
+const oauth2SyncChannel = 'oauth2-token-sync-pkce'
+let disposeTokenSync = null
+
+function getExpiresInValue() {
+  const expiresIn = sessionStorage.getItem('oauth2_access_token_expires_in')
+  return expiresIn || ''
+}
 
 onMounted(() => {
   Object.assign(tokenState, getTokenState())
+  disposeTokenSync = createOAuth2SyncListener(oauth2SyncChannel, applySyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeTokenSync?.()
 })
 
 async function startPkceFlow() {
@@ -66,7 +81,9 @@ async function startPkceFlow() {
     scope: 'openid profile email read write',
     usePkce: true,
     scenario: 'pkce',
-    returnTo: '/pkce'
+    returnTo: '/pkce',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel
   })
 }
 
@@ -82,8 +99,22 @@ async function startScopeConsentDemo() {
     scope: 'openid profile email read write',
     usePkce: true,
     scenario: 'pkce-consent',
-    returnTo: '/pkce'
+    returnTo: '/pkce',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel
   })
+}
+
+function applySyncedTokens(payload) {
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  result.value = {
+    operation: 'oauth2_callback_sync',
+    message: '已同步新窗口授权结果。',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    refresh_token: payload.refresh_token ? '已返回' : '无'
+  }
 }
 
 async function loadDiscovery() {

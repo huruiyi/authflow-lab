@@ -5,11 +5,12 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="演示目标">并排对比用户 access_token、用户 id_token、机器 access_token 的 claims 差异</el-descriptions-item>
           <el-descriptions-item label="重点观察">sub、client_id、scope、aud、preferred_username、email、authorities 等字段</el-descriptions-item>
-          <el-descriptions-item label="准备条件">先完成一次 PKCE 登录，再获取一次 Client Credentials token，下面的对比表才会完整</el-descriptions-item>
+          <el-descriptions-item label="当前方式">本页可直接生成对比所需 token，无需依赖其他 demo 先完成登录或取 token</el-descriptions-item>
         </el-descriptions>
       </el-card>
 
       <el-alert
+        class="mt16"
         type="info"
         show-icon
         :closable="false"
@@ -17,10 +18,12 @@
       />
 
       <div class="actions-row">
-        <el-button :disabled="!hasAnyJwtForComparison" @click="writeClaimsComparisonResult">输出当前 Claims 差异总结</el-button>
+        <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
+        <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
+        <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
       </div>
 
-      <el-row :gutter="12" class="cards-row">
+      <el-row :gutter="16" class="mt16">
         <el-col :xs="24" :md="8">
           <el-card shadow="never">
             <template #header><span>用户 Access Token</span></template>
@@ -28,9 +31,10 @@
               <el-descriptions-item label="状态">{{ decodedUserAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
               <el-descriptions-item label="sub">{{ summarizeClaim(decodedUserAccessToken?.payload?.sub) }}</el-descriptions-item>
               <el-descriptions-item label="scope">{{ summarizeClaim(decodedUserAccessToken?.payload?.scope) }}</el-descriptions-item>
-              <el-descriptions-item label="client_id">{{ summarizeClaim(decodedUserAccessToken?.payload?.client_id) }}</el-descriptions-item>
+              <el-descriptions-item label="client_id">{{ claimsState.userClientId || 'spa-public-client' }}</el-descriptions-item>
+              <el-descriptions-item label="scope">{{ claimsState.userScope || '暂无' }}</el-descriptions-item>
               <el-descriptions-item label="token">
-                <div class="token-box">{{ maskToken(tokenState.accessToken) || '暂无' }}</div>
+                <div class="token-box">{{ claimsState.userAccessToken || '暂无' }}</div>
               </el-descriptions-item>
             </el-descriptions>
           </el-card>
@@ -43,8 +47,9 @@
               <el-descriptions-item label="sub">{{ summarizeClaim(decodedIdToken?.payload?.sub) }}</el-descriptions-item>
               <el-descriptions-item label="aud">{{ summarizeClaim(decodedIdToken?.payload?.aud) }}</el-descriptions-item>
               <el-descriptions-item label="preferred_username">{{ summarizeClaim(decodedIdToken?.payload?.preferred_username) }}</el-descriptions-item>
+              <el-descriptions-item label="scope">{{ claimsState.userScope || '暂无' }}</el-descriptions-item>
               <el-descriptions-item label="token">
-                <div class="token-box">{{ maskToken(tokenState.idToken) || '暂无' }}</div>
+                <div class="token-box">{{ claimsState.userIdToken || '暂无' }}</div>
               </el-descriptions-item>
             </el-descriptions>
           </el-card>
@@ -56,26 +61,27 @@
               <el-descriptions-item label="状态">{{ decodedMachineAccessToken ? '已获取' : '暂无' }}</el-descriptions-item>
               <el-descriptions-item label="sub">{{ summarizeClaim(decodedMachineAccessToken?.payload?.sub) }}</el-descriptions-item>
               <el-descriptions-item label="scope">{{ summarizeClaim(decodedMachineAccessToken?.payload?.scope) }}</el-descriptions-item>
-              <el-descriptions-item label="client_id">{{ summarizeClaim(decodedMachineAccessToken?.payload?.client_id) }}</el-descriptions-item>
+              <el-descriptions-item label="client_id">{{ claimsState.machineClientId || 'm2m-service-client' }}</el-descriptions-item>
+              <el-descriptions-item label="scope">{{ claimsState.machineScope || '暂无' }}</el-descriptions-item>
               <el-descriptions-item label="token">
-                <div class="token-box">{{ maskToken(machineToken) || '暂无' }}</div>
+                <div class="token-box">{{ claimsState.machineAccessToken || '暂无' }}</div>
               </el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
       </el-row>
 
-      <el-card shadow="never">
+      <el-card shadow="never" class="mt16">
         <template #header><span>关键 Claims 对比</span></template>
-        <el-table :data="claimsComparisonRows" border table-layout="fixed" empty-text="先获取用户 token 或 M2M token，再查看对比结果。">
-          <el-table-column prop="claim" label="Claim" min-width="120" />
-          <el-table-column prop="userAccessToken" label="用户 access_token" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="idToken" label="用户 id_token" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="machineAccessToken" label="机器 access_token" min-width="160" show-overflow-tooltip />
+        <el-table :data="claimsComparisonRows" border empty-text="先获取用户 token 或 M2M token，再查看对比结果。">
+          <el-table-column prop="claim" label="Claim" min-width="180" />
+          <el-table-column prop="userAccessToken" label="用户 access_token" min-width="220" show-overflow-tooltip />
+          <el-table-column prop="idToken" label="用户 id_token" min-width="220" show-overflow-tooltip />
+          <el-table-column prop="machineAccessToken" label="机器 access_token" min-width="220" show-overflow-tooltip />
         </el-table>
       </el-card>
 
-      <el-card shadow="never">
+      <el-card shadow="never" class="mt16">
         <template #header><span>差异结论</span></template>
         <el-alert
           v-for="highlight in claimsHighlights"
@@ -94,26 +100,37 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
+import { oauth2Api } from '../api/oauth2'
+import {
+  createOAuth2SyncListener,
+  handleOAuth2Error,
+  startAuthorizationCodeFlow
+} from '../utils/oauth2Helper'
 import { decodeJwt, formatClaimValue, buildClaimsRow, buildClaimsHighlights } from '../utils/jwtHelper'
-import { maskToken } from '../utils/tokenHelper'
-import { getTokenState } from '../utils/tokenHelper'
+
+const claimsSyncChannel = 'oauth2-token-sync-claims-view'
+let disposeClaimsSync = null
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
-const tokenState = reactive(getTokenState())
-const machineToken = ref('')
+const claimsState = reactive({
+  userAccessToken: '',
+  userIdToken: '',
+  userRefreshToken: '',
+  userScope: '',
+  userClientId: 'spa-public-client',
+  machineAccessToken: '',
+  machineScope: '',
+  machineClientId: 'm2m-service-client',
+  lastSource: ''
+})
 
-// 从 sessionStorage 获取 M2M token（如果存在）
-const storedM2MToken = sessionStorage.getItem('oauth2_m2m_token')
-if (storedM2MToken) {
-  machineToken.value = storedM2MToken
-}
-
-const decodedUserAccessToken = computed(() => decodeJwt(tokenState.accessToken))
-const decodedIdToken = computed(() => decodeJwt(tokenState.idToken))
-const decodedMachineAccessToken = computed(() => decodeJwt(machineToken.value))
+const decodedUserAccessToken = computed(() => decodeJwt(claimsState.userAccessToken))
+const decodedIdToken = computed(() => decodeJwt(claimsState.userIdToken))
+const decodedMachineAccessToken = computed(() => decodeJwt(claimsState.machineAccessToken))
 
 const hasAnyJwtForComparison = computed(() => Boolean(
   decodedUserAccessToken.value || decodedIdToken.value || decodedMachineAccessToken.value
@@ -144,8 +161,84 @@ const claimsHighlights = computed(() => buildClaimsHighlights({
   machineAccessToken: decodedMachineAccessToken.value
 }))
 
+function applySyncedTokens(payload) {
+  claimsState.userAccessToken = payload.access_token || ''
+  claimsState.userIdToken = payload.id_token || ''
+  claimsState.userRefreshToken = payload.refresh_token || ''
+  claimsState.userScope = payload.scope || ''
+  claimsState.userClientId = payload.client_id || 'spa-public-client'
+  claimsState.lastSource = 'claims-user-login'
+  result.value = {
+    operation: 'oauth2_callback_sync_claims',
+    message: 'Claims 独立视图已同步新窗口中的用户 Token。',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    refresh_token: payload.refresh_token ? '已返回' : '无'
+  }
+  ElMessage.success('Claims 用户 Token 已同步')
+}
+
+onMounted(() => {
+  disposeClaimsSync = createOAuth2SyncListener(claimsSyncChannel, applySyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeClaimsSync?.()
+})
+
 function summarizeClaim(value) {
   return formatClaimValue(value)
+}
+
+async function startClaimsUserLogin() {
+  claimsState.lastSource = 'claims-user-login'
+  result.value = {
+    operation: 'claims_user_login_prepare',
+    clientId: 'spa-public-client',
+    scope: 'openid profile email read write',
+    message: '即将为独立 Claims 页面在新窗口中发起用户授权，完成后会把 access_token 与 id_token 同步回当前页。'
+  }
+
+  await startAuthorizationCodeFlow({
+    clientId: 'spa-public-client',
+    scope: 'openid profile email read write',
+    usePkce: true,
+    scenario: 'claims-user-login',
+    openInNewWindow: true,
+    syncChannel: claimsSyncChannel,
+    syncTarget: 'claims',
+    returnTo: '/claims'
+  })
+}
+
+async function getClaimsMachineToken() {
+  try {
+    const clientId = 'm2m-service-client'
+    const clientSecret = 'm2m-secret'
+    const scope = 'read write'
+    const basic = btoa(`${clientId}:${clientSecret}`)
+    const { data } = await oauth2Api.clientCredentials({
+      grant_type: 'client_credentials',
+      scope
+    }, {
+      Authorization: `Basic ${basic}`
+    })
+
+    claimsState.machineAccessToken = data.access_token || ''
+    claimsState.machineScope = data.scope || scope
+    claimsState.machineClientId = clientId
+    claimsState.lastSource = 'claims-machine-token'
+    result.value = {
+      operation: 'claims_machine_token',
+      clientId,
+      requestedScope: scope,
+      response: data,
+      message: 'Claims 独立视图已单独获取机器 Token。'
+    }
+    ElMessage.success('Claims 机器 Token 获取成功')
+  } catch (e) {
+    result.value = handleOAuth2Error(e, ElMessage.error)
+  }
 }
 
 function writeClaimsComparisonResult() {
@@ -162,42 +255,33 @@ function writeClaimsComparisonResult() {
 
 <style scoped>
 .claims-container {
-  padding: 6px 4px;
-  overflow-x: hidden;
+  padding: 12px 0;
 }
 
 .info-card {
-  margin-bottom: 12px;
-  border-radius: 8px;
+  margin-bottom: 20px;
+  border-radius: 12px;
 }
 
 .actions-row {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  gap: 12px;
+  margin: 20px 0;
   flex-wrap: wrap;
 }
 
-.cards-row {
-  margin: 12px 0;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
 .token-box {
+  max-width: 100%;
   word-break: break-all;
   white-space: pre-wrap;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 12px;
-  color: #606266;
-  background: #f5f7fa;
-  padding: 8px;
-  border-radius: 4px;
-  max-height: 100px;
-  overflow-y: auto;
+  font-family: monospace;
+}
+
+.mt16 {
+  margin-top: 16px;
 }
 
 .mb16 {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 </style>

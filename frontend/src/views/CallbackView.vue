@@ -55,10 +55,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { oauth2Api } from '../api/oauth2'
+import { saveTokens } from '../utils/tokenHelper'
+import { broadcastOAuth2Sync, clearOAuth2RedirectContext } from '../utils/oauth2Helper'
 
 const route = useRoute()
 const router = useRouter()
@@ -118,28 +120,13 @@ onMounted(async () => {
       ...tokenRequestBody
     })
     tokenResult.value = data
-    sessionStorage.setItem('oauth2_access_token', data.access_token)
-    sessionStorage.setItem('oauth2_scope', data.scope || '')
-    if (data.id_token) {
-      sessionStorage.setItem('oauth2_id_token', data.id_token)
-    }
-    if (data.refresh_token) {
-      sessionStorage.setItem('oauth2_refresh_token', data.refresh_token)
-    }
-    if (data.expires_in) {
-      const issuedAt = Date.now()
-      sessionStorage.setItem('oauth2_access_token_issued_at', String(issuedAt))
-      sessionStorage.setItem('oauth2_access_token_expires_at', String(issuedAt + Number(data.expires_in) * 1000))
-      sessionStorage.setItem('oauth2_access_token_expires_in', String(data.expires_in))
-    }
+    saveTokens(data)
+    broadcastOAuth2Sync(data)
     ElMessage.success(`授权成功，已回到 ${window.location.origin}`)
   } catch (e) {
     error.value = e.response?.data?.error_description || e.response?.data?.error || e.message
   } finally {
-    sessionStorage.removeItem('oauth2_state')
-    sessionStorage.removeItem('pkce_code_verifier')
-    sessionStorage.removeItem('pkce_mode')
-    sessionStorage.removeItem('oauth2_demo_scenario')
+    clearOAuth2RedirectContext()
     loading.value = false
   }
 })

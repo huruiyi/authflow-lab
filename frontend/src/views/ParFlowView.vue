@@ -46,10 +46,11 @@ import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { handleOAuth2Error, getAuthServerOrigin } from '../utils/oauth2Helper'
+import { handleOAuth2Error, getAuthServerOrigin, prepareOAuth2Redirect } from '../utils/oauth2Helper'
 import { generatePkcePair, generateRandomString } from '../composables/pkce'
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
+const oauth2SyncChannel = 'oauth2-token-sync-par'
 
 const parForm = reactive({
   clientId: 'spa-par-client',
@@ -69,12 +70,16 @@ async function startParFlow() {
     const state = generateRandomString(32)
     const pkcePair = await generatePkcePair()
 
-    sessionStorage.setItem('oauth2_state', state)
-    sessionStorage.setItem('pkce_mode', 'required')
-    sessionStorage.setItem('pkce_code_verifier', pkcePair.codeVerifier)
-    sessionStorage.setItem('oauth2_demo_scenario', 'par')
-    sessionStorage.setItem('oauth2_client_id', parForm.clientId)
-    sessionStorage.setItem('oauth2_return_to', '/par')
+    prepareOAuth2Redirect({
+      clientId: parForm.clientId,
+      usePkce: true,
+      scenario: 'par',
+      returnTo: '/par',
+      syncChannel: oauth2SyncChannel
+    }, {
+      state,
+      codeVerifier: pkcePair.codeVerifier
+    })
 
     const { data } = await oauth2Api.pushedAuthorization({
       response_type: 'code',
@@ -102,7 +107,7 @@ async function startParFlow() {
       client_id: parForm.clientId,
       request_uri: data.request_uri
     })
-    window.location.href = `${authServerOrigin}/oauth2/authorize?${authorizeParams.toString()}`
+    window.open(`${authServerOrigin}/oauth2/authorize?${authorizeParams.toString()}`, '_blank')
   } catch (e) {
     parState.lastStatus = 'PAR 请求失败'
     result.value = handleOAuth2Error(e, ElMessage.error)
