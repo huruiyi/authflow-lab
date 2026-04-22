@@ -20,361 +20,362 @@ import java.time.Instant;
 @Configuration
 public class DataInitializer implements ApplicationRunner {
 
-    private static final String DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
-    private static final String URL_FRONTEND_BASE = "http://192.168.0.108:5173";
-    private static final String URL_FRONTEND_CALLBACK = URL_FRONTEND_BASE + "/callback";
-    private static final String URL_BACKEND_BASE = "http://192.168.0.108:30000";
-    private static final String URL_BACKEND_CALLBACK = URL_BACKEND_BASE + "/callback";
+  private static final String DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
+  private static final String URL_FRONTEND_BASE = "http://authlab.test:5173";
+  private static final String URL_FRONTEND_CALLBACK = URL_FRONTEND_BASE + "/callback";
+  private static final String URL_BACKEND_BASE = "http://authlab.test:30000";
+  private static final String URL_BACKEND_CALLBACK = URL_BACKEND_BASE + "/callback";
 
-    private final JdbcUserDetailsManager userDetailsManager;
-    private final PasswordEncoder passwordEncoder;
-    private final RegisteredClientRepository registeredClientRepository;
+  private final JdbcUserDetailsManager userDetailsManager;
+  private final PasswordEncoder passwordEncoder;
+  private final RegisteredClientRepository registeredClientRepository;
 
-    public DataInitializer(JdbcUserDetailsManager userDetailsManager,
-                           PasswordEncoder passwordEncoder,
-                           RegisteredClientRepository registeredClientRepository) {
-        this.userDetailsManager = userDetailsManager;
-        this.passwordEncoder = passwordEncoder;
-        this.registeredClientRepository = registeredClientRepository;
+  public DataInitializer(
+      JdbcUserDetailsManager userDetailsManager,
+      PasswordEncoder passwordEncoder,
+      RegisteredClientRepository registeredClientRepository) {
+    this.userDetailsManager = userDetailsManager;
+    this.passwordEncoder = passwordEncoder;
+    this.registeredClientRepository = registeredClientRepository;
+  }
+
+  @Override
+  public void run(ApplicationArguments args) {
+    ensureAdminUser();
+    ensureRepositoryRegisteredClients();
+  }
+
+  private void ensureAdminUser() {
+    if (!userDetailsManager.userExists("admin")) {
+      UserDetails admin = User.builder()
+          .username("admin")
+          .password(passwordEncoder.encode("admin123"))
+          .roles("ADMIN")
+          .build();
+      userDetailsManager.createUser(admin);
     }
+  }
 
-    @Override
-    public void run(ApplicationArguments args) {
-        ensureAdminUser();
-        ensureRepositoryRegisteredClients();
-    }
+  private void ensureRepositoryRegisteredClients() {
+    ensureWebappClientExists();
+    ensureSpaPublicClientExists();
+    ensureM2mClientExists();
+    ensureSpaConsentClientExists();
+    ensureSpaRotationClientExists();
+    ensureMobileClientExists();
+    ensurePostAuthClientExists();
+    ensureDeviceFlowClientExists();
+    ensureAllInOneClientExists();
+  }
 
-    private void ensureAdminUser() {
-        if (!userDetailsManager.userExists("admin")) {
-            UserDetails admin = User.builder()
-                    .username("admin")
-                    .password(passwordEncoder.encode("admin123"))
-                    .roles("ADMIN")
-                    .build();
-            userDetailsManager.createUser(admin);
-        }
+  private void ensureWebappClientExists() {
+    if (registeredClientRepository.findByClientId("webapp-client") == null) {
+      registeredClientRepository.save(webappClient());
     }
+  }
 
-    private void ensureRepositoryRegisteredClients() {
-        ensureWebappClientExists();
-        ensureSpaPublicClientExists();
-        ensureM2mClientExists();
-        ensureSpaConsentClientExists();
-        ensureSpaRotationClientExists();
-        ensureMobileClientExists();
-        ensurePostAuthClientExists();
-        ensureDeviceFlowClientExists();
-        ensureAllInOneClientExists();
+  private void ensureSpaPublicClientExists() {
+    if (registeredClientRepository.findByClientId("spa-public-client") == null) {
+      registeredClientRepository.save(spaPublicClient());
     }
+  }
 
-    private void ensureWebappClientExists() {
-        if (registeredClientRepository.findByClientId("webapp-client") == null) {
-            registeredClientRepository.save(webappClient());
-        }
+  private void ensureM2mClientExists() {
+    if (registeredClientRepository.findByClientId("m2m-service-client") == null) {
+      registeredClientRepository.save(m2mClient());
     }
+  }
 
-    private void ensureSpaPublicClientExists() {
-        if (registeredClientRepository.findByClientId("spa-public-client") == null) {
-            registeredClientRepository.save(spaPublicClient());
-        }
+  private void ensureSpaConsentClientExists() {
+    if (registeredClientRepository.findByClientId("spa-consent-client") == null) {
+      registeredClientRepository.save(spaConsentClient());
     }
+  }
 
-    private void ensureM2mClientExists() {
-        if (registeredClientRepository.findByClientId("m2m-service-client") == null) {
-            registeredClientRepository.save(m2mClient());
-        }
+  private void ensureSpaRotationClientExists() {
+    if (registeredClientRepository.findByClientId("spa-rotation-client") == null) {
+      registeredClientRepository.save(spaRotationClient());
     }
+  }
 
-    private void ensureSpaConsentClientExists() {
-        if (registeredClientRepository.findByClientId("spa-consent-client") == null) {
-            registeredClientRepository.save(spaConsentClient());
-        }
+  private void ensureMobileClientExists() {
+    if (registeredClientRepository.findByClientId("mobile-app-client") == null) {
+      registeredClientRepository.save(mobileClient());
     }
+  }
 
-    private void ensureSpaRotationClientExists() {
-        if (registeredClientRepository.findByClientId("spa-rotation-client") == null) {
-            registeredClientRepository.save(spaRotationClient());
-        }
+  private void ensurePostAuthClientExists() {
+    if (registeredClientRepository.findByClientId("post-auth-client") == null) {
+      registeredClientRepository.save(postAuthClient());
     }
+  }
 
-    private void ensureMobileClientExists() {
-        if (registeredClientRepository.findByClientId("mobile-app-client") == null) {
-            registeredClientRepository.save(mobileClient());
-        }
+  private void ensureDeviceFlowClientExists() {
+    if (registeredClientRepository.findByClientId("device-flow-client") == null) {
+      registeredClientRepository.save(deviceFlowClient());
     }
+  }
 
-    private void ensurePostAuthClientExists() {
-        if (registeredClientRepository.findByClientId("post-auth-client") == null) {
-            registeredClientRepository.save(postAuthClient());
-        }
+  private void ensureAllInOneClientExists() {
+    if (registeredClientRepository.findByClientId("all-in-one-client") == null) {
+      registeredClientRepository.save(allInOneClient());
     }
+  }
 
-    private void ensureDeviceFlowClientExists() {
-        if (registeredClientRepository.findByClientId("device-flow-client") == null) {
-            registeredClientRepository.save(deviceFlowClient());
-        }
-    }
+  private RegisteredClient webappClient() {
+    return RegisteredClient.withId("client-webapp-001")
+        .clientId("webapp-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("传统 Web 应用")
+        .clientSecret("{noop}webapp-secret")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(false)
+            .requireAuthorizationConsent(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private void ensureAllInOneClientExists() {
-        if (registeredClientRepository.findByClientId("all-in-one-client") == null) {
-            registeredClientRepository.save(allInOneClient());
-        }
-    }
+  private RegisteredClient spaPublicClient() {
+    return RegisteredClient.withId("client-spa-002")
+        .clientId("spa-public-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("单页应用（SPA）")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient webappClient() {
-        return RegisteredClient.withId("client-webapp-001")
-            .clientId("webapp-client")
-            .clientIdIssuedAt(Instant.now())
-            .clientName("传统 Web 应用")
-                .clientSecret("{noop}webapp-secret")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(false)
-                    .requireAuthorizationConsent(true)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient m2mClient() {
+    return RegisteredClient.withId("client-m2m-003")
+        .clientId("m2m-service-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("后端服务（M2M）")
+        .clientSecret("{noop}m2m-secret")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(false)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient spaPublicClient() {
-            return RegisteredClient.withId("client-spa-002")
-                .clientId("spa-public-client")
-                .clientIdIssuedAt(Instant.now())
-                .clientName("单页应用（SPA）")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(true)
-                    .requireAuthorizationConsent(false)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient spaConsentClient() {
+    return RegisteredClient.withId("client-spa-consent-0031")
+        .clientId("spa-consent-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("单页应用（SPA + Consent）")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient m2mClient() {
-        return RegisteredClient.withId("client-m2m-003")
-            .clientId("m2m-service-client")
-            .clientIdIssuedAt(Instant.now())
-            .clientName("后端服务（M2M）")
-                .clientSecret("{noop}m2m-secret")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(false)
-                    .requireAuthorizationConsent(false)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient spaRotationClient() {
+    return RegisteredClient.withId("client-spa-rotation-0032")
+        .clientId("spa-rotation-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("单页应用（短过期 + Refresh 轮换）")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(false)
+            .accessTokenTimeToLive(Duration.ofSeconds(30))
+            .refreshTokenTimeToLive(Duration.ofMinutes(10))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient spaConsentClient() {
-            return RegisteredClient.withId("client-spa-consent-0031")
-                .clientId("spa-consent-client")
-                .clientIdIssuedAt(Instant.now())
-                .clientName("单页应用（SPA + Consent）")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(true)
-                    .requireAuthorizationConsent(true)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient mobileClient() {
+    return RegisteredClient.withId("client-mobile-004")
+        .clientId("mobile-app-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("移动端应用")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri("com.example.app://oauth2/callback")
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(false)
+            .accessTokenTimeToLive(Duration.ofHours(1))
+            .refreshTokenTimeToLive(Duration.ofDays(7))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient spaRotationClient() {
-            return RegisteredClient.withId("client-spa-rotation-0032")
-                .clientId("spa-rotation-client")
-                .clientIdIssuedAt(Instant.now())
-                .clientName("单页应用（短过期 + Refresh 轮换）")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(true)
-                    .requireAuthorizationConsent(false)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(false)
-                    .accessTokenTimeToLive(Duration.ofSeconds(30))
-                    .refreshTokenTimeToLive(Duration.ofMinutes(10))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient postAuthClient() {
+    return RegisteredClient.withId("client-post-005")
+        .clientId("post-auth-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("POST 认证 Web 应用")
+        .clientSecret("{noop}post-secret")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_BACKEND_CALLBACK)
+        .postLogoutRedirectUri(URL_BACKEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(false)
+            .requireAuthorizationConsent(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient mobileClient() {
-        return RegisteredClient.withId("client-mobile-004")
-            .clientId("mobile-app-client")
-            .clientIdIssuedAt(Instant.now())
-            .clientName("移动端应用")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("com.example.app://oauth2/callback")
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(true)
-                    .requireAuthorizationConsent(false)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(false)
-                    .accessTokenTimeToLive(Duration.ofHours(1))
-                    .refreshTokenTimeToLive(Duration.ofDays(7))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient deviceFlowClient() {
+    return RegisteredClient.withId("client-device-006")
+        .clientId("device-flow-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("IoT 设备（设备码流程）")
+        .clientSecret("{noop}device-secret")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+        .authorizationGrantType(new AuthorizationGrantType(DEVICE_CODE_GRANT))
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .scope("profile")
+        .scope("read")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(false)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(false)
+            .accessTokenTimeToLive(Duration.ofHours(1))
+            .refreshTokenTimeToLive(Duration.ofDays(7))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
-    private RegisteredClient postAuthClient() {
-        return RegisteredClient.withId("client-post-005")
-            .clientId("post-auth-client")
-            .clientIdIssuedAt(Instant.now())
-            .clientName("POST 认证 Web 应用")
-                .clientSecret("{noop}post-secret")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(URL_BACKEND_CALLBACK)
-                .postLogoutRedirectUri(URL_BACKEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(false)
-                    .requireAuthorizationConsent(true)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
-
-    private RegisteredClient deviceFlowClient() {
-        return RegisteredClient.withId("client-device-006")
-            .clientId("device-flow-client")
-            .clientIdIssuedAt(Instant.now())
-            .clientName("IoT 设备（设备码流程）")
-                .clientSecret("{noop}device-secret")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(new AuthorizationGrantType(DEVICE_CODE_GRANT))
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .scope("profile")
-                .scope("read")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(false)
-                    .requireAuthorizationConsent(false)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(false)
-                    .accessTokenTimeToLive(Duration.ofHours(1))
-                    .refreshTokenTimeToLive(Duration.ofDays(7))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
-
-    private RegisteredClient allInOneClient() {
-            return RegisteredClient.withId("client-all-007")
-                .clientId("all-in-one-client")
-                .clientIdIssuedAt(Instant.now())
-                .clientName("综合测试客户端")
-                .clientSecret("{noop}all-secret")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .authorizationGrantType(new AuthorizationGrantType(DEVICE_CODE_GRANT))
-                .redirectUri(URL_BACKEND_CALLBACK)
-                .redirectUri(URL_FRONTEND_CALLBACK)
-                .postLogoutRedirectUri(URL_BACKEND_BASE)
-                .postLogoutRedirectUri(URL_FRONTEND_BASE)
-                .scope("openid")
-                .scope("profile")
-                .scope("email")
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                    .requireProofKey(true)
-                    .requireAuthorizationConsent(true)
-                    .build())
-                .tokenSettings(TokenSettings.builder()
-                    .reuseRefreshTokens(true)
-                    .accessTokenTimeToLive(Duration.ofMinutes(5))
-                    .refreshTokenTimeToLive(Duration.ofHours(1))
-                    .authorizationCodeTimeToLive(Duration.ofMinutes(5))
-                    .deviceCodeTimeToLive(Duration.ofMinutes(5))
-                    .build())
-                .build();
-    }
+  private RegisteredClient allInOneClient() {
+    return RegisteredClient.withId("client-all-007")
+        .clientId("all-in-one-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("综合测试客户端")
+        .clientSecret("{noop}all-secret")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+        .authorizationGrantType(new AuthorizationGrantType(DEVICE_CODE_GRANT))
+        .redirectUri(URL_BACKEND_CALLBACK)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_BACKEND_BASE)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
 
 }

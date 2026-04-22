@@ -20,6 +20,11 @@
           :closable="false"
         />
 
+        <div v-if="error" class="actions">
+          <el-button type="primary" @click="goFlows">进入 OAuth2 场景演示</el-button>
+          <el-button @click="goClients">返回 Client 管理</el-button>
+        </div>
+
         <div v-else class="result-block">
           <el-alert title="授权成功，已完成授权码兑换" type="success" show-icon :closable="false" />
 

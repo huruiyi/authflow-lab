@@ -2,7 +2,7 @@
 
 本文档用于指导在同一局域网下，通过手机访问当前 Spring Authorization Server + Vue 演示项目，并测试 Authorization Code + PKCE、Device Code 等 OAuth2 场景。
 
-当前电脑局域网 IP：`192.168.0.108`
+当前电脑局域网 IP：`authlab.test`
 
 下面所有配置和命令都已经替换为这个 IP，可直接使用。
 
@@ -19,7 +19,7 @@ ipconfig
 找到当前 Wi‑Fi 或以太网网卡的 IPv4，比如：
 
 ```text
-192.168.0.108
+authlab.test
 ```
 
 下面都使用这个地址。
@@ -37,9 +37,9 @@ server:
   port: 30000
 
 app:
-  base-url: http://192.168.0.108:30000
-  allowed-origins: http://localhost:5173,http://192.168.0.108:5173
-  frontend-base-url: http://192.168.0.108:5173
+  base-url: http://authlab.test:30000
+  allowed-origins: http://localhost:5173,http://authlab.test:5173
+  frontend-base-url: http://authlab.test:5173
 ```
 
 ### 这 3 个值分别是干什么的
@@ -51,7 +51,7 @@ app:
 - `app.allowed-origins`
   - 允许哪些前端来源跨域访问后端
   - 本机浏览器调试要保留 `http://localhost:5173`
-  - 手机访问要加 `http://192.168.0.108:5173`
+  - 手机访问要加 `http://authlab.test:5173`
 
 - `app.frontend-base-url`
   - 前端对外访问地址
@@ -66,27 +66,27 @@ app:
 ### PowerShell 启动方式
 
 ```powershell
-$env:VITE_BACKEND_ORIGIN="http://192.168.0.108:30000"
+$env:VITE_BACKEND_ORIGIN="http://authlab.test:30000"
 npm --prefix frontend run dev
 ```
 
 ### CMD 启动方式
 
 ```cmd
-set VITE_BACKEND_ORIGIN=http://192.168.0.108:30000
+set VITE_BACKEND_ORIGIN=http://authlab.test:30000
 npm --prefix frontend run dev
 ```
 
 ### Git Bash 启动方式
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://authlab.test:30000 npm --prefix frontend run dev
 ```
 
 这个变量会被 [`frontend/vite.config.js`](frontend/vite.config.js) 和 [`frontend/src/views/FlowsDemo.vue`](frontend/src/views/FlowsDemo.vue) 使用：
 
-- Vite 代理转发到 `http://192.168.0.108:30000`
-- 前端“发起授权登录”时跳到 `http://192.168.0.108:30000/oauth2/authorize`
+- Vite 代理转发到 `http://authlab.test:30000`
+- 前端“发起授权登录”时跳到 `http://authlab.test:30000/oauth2/authorize`
 
 ---
 
@@ -103,18 +103,18 @@ mvn -f backend/pom.xml spring-boot:run
 ### PowerShell
 
 ```powershell
-$env:APP_BASE_URL="http://192.168.0.108:30000"
-$env:APP_ALLOWED_ORIGINS="http://localhost:5173,http://192.168.0.108:5173"
-$env:APP_FRONTEND_BASE_URL="http://192.168.0.108:5173"
+$env:APP_BASE_URL="http://authlab.test:30000"
+$env:APP_ALLOWED_ORIGINS="http://localhost:5173,http://authlab.test:5173"
+$env:APP_FRONTEND_BASE_URL="http://authlab.test:5173"
 mvn -f backend/pom.xml spring-boot:run
 ```
 
 ### Git Bash
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:30000 \
-APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
-APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
+APP_BASE_URL=http://authlab.test:30000 \
+APP_ALLOWED_ORIGINS=http://localhost:5173,http://authlab.test:5173 \
+APP_FRONTEND_BASE_URL=http://authlab.test:5173 \
 mvn -f backend/pom.xml spring-boot:run
 ```
 
@@ -125,16 +125,16 @@ mvn -f backend/pom.xml spring-boot:run
 ### 先启动后端
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:30000 \
-APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
-APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
+APP_BASE_URL=http://authlab.test:30000 \
+APP_ALLOWED_ORIGINS=http://localhost:5173,http://authlab.test:5173 \
+APP_FRONTEND_BASE_URL=http://authlab.test:5173 \
 mvn -f backend/pom.xml spring-boot:run
 ```
 
 ### 再启动前端
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://authlab.test:30000 npm --prefix frontend run dev
 ```
 
 ---
@@ -150,7 +150,7 @@ http://localhost:5173
 ### 手机访问
 
 ```text
-http://192.168.0.108:5173
+http://authlab.test:5173
 ```
 
 注意：手机和电脑必须在同一个 Wi‑Fi / 同一局域网。
@@ -164,7 +164,7 @@ http://192.168.0.108:5173
 在手机上打开：
 
 ```text
-http://192.168.0.108:5173
+http://authlab.test:5173
 ```
 
 然后：
@@ -174,13 +174,13 @@ http://192.168.0.108:5173
 3. 浏览器应跳到：
 
 ```text
-http://192.168.0.108:30000/oauth2/authorize?...
+http://authlab.test:30000/oauth2/authorize?...
 ```
 
 4. 登录授权后，应跳回：
 
 ```text
-http://192.168.0.108:5173/callback?code=...
+http://authlab.test:5173/callback?code=...
 ```
 
 5. 页面显示 access_token / refresh_token
@@ -197,7 +197,7 @@ http://192.168.0.108:5173/callback?code=...
 应该是：
 
 ```text
-http://192.168.0.108:30000/...
+http://authlab.test:30000/...
 ```
 
 而不是：
@@ -224,7 +224,7 @@ http://localhost:30000/...
 你可以先在电脑浏览器访问：
 
 ```text
-http://192.168.0.108:5173
+http://authlab.test:5173
 ```
 
 如果电脑自己都打不开 LAN 地址，手机肯定也不行。
@@ -236,9 +236,9 @@ http://192.168.0.108:5173
 说明前端或后端仍有旧配置：
 
 - 检查前端启动时有没有带：
-  - `VITE_BACKEND_ORIGIN=http://192.168.0.108:30000`
+  - `VITE_BACKEND_ORIGIN=http://authlab.test:30000`
 - 检查后端：
-  - `app.base-url=http://192.168.0.108:30000`
+  - `app.base-url=http://authlab.test:30000`
 
 ---
 
@@ -255,7 +255,7 @@ http://192.168.0.108:5173
 
 1. 确认后端已经重启
 2. 确认 `app.frontend-base-url` 是：
-   - `http://192.168.0.108:5173`
+   - `http://authlab.test:5173`
 
 ---
 
@@ -265,7 +265,7 @@ http://192.168.0.108:5173
 
 ```yml
 app:
-  allowed-origins: http://localhost:5173,http://192.168.0.108:5173
+  allowed-origins: http://localhost:5173,http://authlab.test:5173
 ```
 
 如果你的手机访问地址不是这个 IP，就要改成实际 IP。
@@ -274,7 +274,7 @@ app:
 
 ## 9. 一份可直接用的最终示例
 
-假设你的 IP 就是 `192.168.0.108`。
+假设你的 IP 就是 `authlab.test`。
 
 ### `application.yml`
 
@@ -283,9 +283,9 @@ server:
   port: 30000
 
 app:
-  base-url: http://192.168.0.108:30000
-  allowed-origins: http://localhost:5173,http://192.168.0.108:5173
-  frontend-base-url: http://192.168.0.108:5173
+  base-url: http://authlab.test:30000
+  allowed-origins: http://localhost:5173,http://authlab.test:5173
+  frontend-base-url: http://authlab.test:5173
 
 spring:
   datasource:
@@ -314,13 +314,13 @@ mvn -f backend/pom.xml spring-boot:run
 ### 前端启动
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://authlab.test:30000 npm --prefix frontend run dev
 ```
 
 ### 手机访问
 
 ```text
-http://192.168.0.108:5173
+http://authlab.test:5173
 ```
 
 ---
@@ -338,7 +338,7 @@ mvn -f backend/pom.xml spring-boot:run
 前端：
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://authlab.test:30000 npm --prefix frontend run dev
 ```
 
 ### 方案 B：全部用环境变量启动
@@ -346,16 +346,16 @@ VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 后端：
 
 ```bash
-APP_BASE_URL=http://192.168.0.108:30000 \
-APP_ALLOWED_ORIGINS=http://localhost:5173,http://192.168.0.108:5173 \
-APP_FRONTEND_BASE_URL=http://192.168.0.108:5173 \
+APP_BASE_URL=http://authlab.test:30000 \
+APP_ALLOWED_ORIGINS=http://localhost:5173,http://authlab.test:5173 \
+APP_FRONTEND_BASE_URL=http://authlab.test:5173 \
 mvn -f backend/pom.xml spring-boot:run
 ```
 
 前端：
 
 ```bash
-VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
+VITE_BACKEND_ORIGIN=http://authlab.test:30000 npm --prefix frontend run dev
 ```
 
 ---
@@ -365,6 +365,6 @@ VITE_BACKEND_ORIGIN=http://192.168.0.108:30000 npm --prefix frontend run dev
 1. 先把 [`backend/src/main/resources/application.yml`](backend/src/main/resources/application.yml) 改成上面的实际 IP 配置
 2. 重启后端
 3. 用带 `VITE_BACKEND_ORIGIN` 的命令启动前端
-4. 用手机访问 `http://192.168.0.108:5173`
+4. 用手机访问 `http://authlab.test:5173`
 5. 先测试 PKCE 登录
 6. 再测试 Device Code 的 `verification_uri` 是否已变成 LAN 地址

@@ -1,6 +1,6 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:30000",
-    [string]$RedirectUri = "http://192.168.0.108:5173/callback",
+    [string]$RedirectUri = "http://authlab.test:5173/callback",
     [string]$Username = "admin",
     [string]$Password = "admin123",
     [string]$ClientId = "spa-par-client",

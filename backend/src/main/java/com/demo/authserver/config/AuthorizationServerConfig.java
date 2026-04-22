@@ -28,56 +28,56 @@ import java.util.UUID;
 @Configuration
 public class AuthorizationServerConfig {
 
-    @Value("${app.base-url}")
-    private String appBaseUrl;
+  @Value("${app.base-url}")
+  private String appBaseUrl;
 
-    @Bean
-    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
-        return new JdbcRegisteredClientRepository(jdbcTemplate);
-    }
+  @Bean
+  public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+    return new JdbcRegisteredClientRepository(jdbcTemplate);
+  }
 
-    @Bean
-    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
-                                                            RegisteredClientRepository clientRepository) {
-        return new JdbcOAuth2AuthorizationService(jdbcTemplate, clientRepository);
-    }
+  @Bean
+  public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
+                                                         RegisteredClientRepository clientRepository) {
+    return new JdbcOAuth2AuthorizationService(jdbcTemplate, clientRepository);
+  }
 
-    @Bean
-    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate,
-                                                                          RegisteredClientRepository clientRepository) {
-        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, clientRepository);
-    }
+  @Bean
+  public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate,
+                                                                       RegisteredClientRepository clientRepository) {
+    return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, clientRepository);
+  }
 
-    @Bean
-    public JWKSource<SecurityContext> jwkSource() {
-        RSAKey rsaKey = generateRsaKey();
-        JWKSet jwkSet = new JWKSet(rsaKey);
-        return new ImmutableJWKSet<>(jwkSet);
-    }
+  @Bean
+  public JWKSource<SecurityContext> jwkSource() {
+    RSAKey rsaKey = generateRsaKey();
+    JWKSet jwkSet = new JWKSet(rsaKey);
+    return new ImmutableJWKSet<>(jwkSet);
+  }
 
-    @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
-        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
-    }
+  @Bean
+  public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+    return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+  }
 
-    @Bean
-    public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder()
-                .issuer(appBaseUrl)
-                .build();
-    }
+  @Bean
+  public AuthorizationServerSettings authorizationServerSettings() {
+    return AuthorizationServerSettings.builder()
+        .issuer(appBaseUrl)
+        .build();
+  }
 
-    private static RSAKey generateRsaKey() {
-        try {
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(2048);
-            KeyPair keyPair = generator.generateKeyPair();
-            return new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                    .privateKey((RSAPrivateKey) keyPair.getPrivate())
-                    .keyID(UUID.randomUUID().toString())
-                    .build();
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to generate RSA key pair", ex);
-        }
+  private static RSAKey generateRsaKey() {
+    try {
+      KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+      generator.initialize(2048);
+      KeyPair keyPair = generator.generateKeyPair();
+      return new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+          .privateKey((RSAPrivateKey) keyPair.getPrivate())
+          .keyID(UUID.randomUUID().toString())
+          .build();
+    } catch (Exception ex) {
+      throw new IllegalStateException("Failed to generate RSA key pair", ex);
     }
+  }
 }
