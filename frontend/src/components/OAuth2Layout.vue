@@ -27,11 +27,11 @@
           <el-menu class="side-menu" :default-active="currentRoute" :default-openeds="defaultOpeneds" @select="handleNavSelect">
             <el-sub-menu v-for="group in navGroups" :key="group.key" :index="group.key">
               <template #title>
-                <el-icon><Document /></el-icon>
+                <el-icon><Grid /></el-icon>
                 <span>{{ group.label }}</span>
               </template>
               <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">
-                <el-icon><Document /></el-icon>
+                <el-icon><component :is="item.icon" /></el-icon>
                 <span>{{ item.label }}</span>
               </el-menu-item>
             </el-sub-menu>
@@ -60,18 +60,18 @@ const navGroups = [
     key: 'oauth2-demos',
     label: 'OAuth2 流程演示',
     items: [
-      { path: '/pkce', label: '1. Authorization Code + PKCE' },
-      { path: '/m2m', label: '2. Client Credentials' },
-      { path: '/client-auth', label: '3. Client 认证方式差异' },
-      { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比' },
-      { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
-      { path: '/dynamic-client', label: '6. Dynamic Client Registration' },
-      { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
-      { path: '/device', label: '8. Device Code' },
-      { path: '/claims', label: '9. JWT Claims 差异' },
-      { path: '/scenarios', label: '10. 场景说明' },
-      { path: '/clients', label: '11. Client 管理' },
-      { path: '/flows-demo', label: 'Flows Demo', newWindow: true }
+      { path: '/pkce', label: '1. Authorization Code + PKCE', icon: 'Key' },
+      { path: '/m2m', label: '2. Client Credentials', icon: 'Connection' },
+      { path: '/client-auth', label: '3. Client 认证方式差异', icon: 'Lock' },
+      { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比', icon: 'Warning' },
+      { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换', icon: 'Refresh' },
+      { path: '/dynamic-client', label: '6. Dynamic Client Registration', icon: 'Plus' },
+      { path: '/par', label: '7. Pushed Authorization Request（PAR）', icon: 'Upload' },
+      { path: '/device', label: '8. Device Code', icon: 'Monitor' },
+      { path: '/claims', label: '9. JWT Claims 差异', icon: 'Tickets' },
+      { path: '/scenarios', label: '10. 场景说明', icon: 'Reading' },
+      { path: '/clients', label: '11. Client 管理', icon: 'User' },
+      { path: '/flows-demo', label: 'Flows Demo', newWindow: true, icon: 'DataBoard' }
     ]
   }
 ]
@@ -261,7 +261,7 @@ async function handleLogout() {
   border-right: none;
   flex: 1;
   overflow-y: auto;
-  padding: 6px 6px;
+  padding: 8px;
 }
 
 .side-menu::-webkit-scrollbar {
@@ -273,16 +273,27 @@ async function handleLogout() {
   border-radius: 2px;
 }
 
+:deep(.el-sub-menu) {
+  margin-bottom: 6px;
+}
+
+:deep(.el-sub-menu__title),
 :deep(.el-menu-item) {
-  border-radius: 6px;
-  margin: 2px 0;
-  height: 38px;
-  line-height: 38px;
-  padding: 0 10px;
+  border-radius: 8px;
+  margin: 4px 0;
+  min-height: 40px;
+  line-height: 40px;
+  padding: 0 12px;
   font-size: 13px;
   transition: all 0.3s ease;
 }
 
+:deep(.el-sub-menu__title) {
+  font-weight: 600;
+  color: #303133;
+}
+
+:deep(.el-sub-menu__title:hover),
 :deep(.el-menu-item:hover) {
   background: rgba(102, 126, 234, 0.1);
   transform: translateX(2px);
@@ -293,9 +304,14 @@ async function handleLogout() {
   color: #fff;
 }
 
+:deep(.el-sub-menu__title .el-icon),
 :deep(.el-menu-item .el-icon) {
-  margin-right: 6px;
-  font-size: 15px;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+:deep(.el-menu-item.is-active .el-icon) {
+  color: #fff;
 }
 
 /* Main Content Area */
