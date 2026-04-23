@@ -93,7 +93,7 @@ public class SecurityConfig {
   public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
     http
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/api/auth/login", "/api/auth/status").permitAll()
+            .requestMatchers("/api/auth/login", "/api/auth/status", "/api/auth/backchannel-logout").permitAll()
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll()
         )

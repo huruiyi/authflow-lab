@@ -44,6 +44,11 @@ export const oauth2Api = {
     new URLSearchParams(body).toString(),
     { headers }
   ),
+  tokenWithJwtAuth: (body, headers = {}) => formHttp.post(
+    '/api/auth/token-jwt-auth',
+    new URLSearchParams(body).toString(),
+    { headers }
+  ),
   getUserInfo: token => jsonHttp.get('/userinfo', {
     headers: { Authorization: `Bearer ${token}` }
   }),
@@ -60,6 +65,11 @@ export const oauth2Api = {
   callTokenInfo: token => jsonHttp.get('/resource/token-info', {
     headers: { Authorization: `Bearer ${token}` }
   }),
+  backchannelLogout: (body, headers = {}) => formHttp.post(
+    '/api/auth/backchannel-logout',
+    new URLSearchParams(body).toString(),
+    { headers }
+  ),
   listClients: () => jsonHttp.get('/api/clients'),
   createClient: body => jsonHttp.post('/api/clients', body),
   deleteClient: id => jsonHttp.delete(`/api/clients/${id}`)

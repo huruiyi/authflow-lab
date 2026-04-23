@@ -19,6 +19,15 @@ SET @ts_long_ttl = '{"@class":"java.util.Collections$UnmodifiableMap","settings.
 -- token 有效期：AT=30s  RT=10min  不复用 RefreshToken（用于前端演示短过期 + 轮换）
 SET @ts_short_rotation = '{"@class":"java.util.Collections$UnmodifiableMap","settings.token.reuse-refresh-tokens":false,"settings.token.x509-certificate-bound-access-tokens":false,"settings.token.id-token-signature-algorithm":["org.springframework.security.oauth2.jose.jws.SignatureAlgorithm","RS256"],"settings.token.access-token-time-to-live":["java.time.Duration",30.000000000],"settings.token.access-token-format":{"@class":"org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat","value":"self-contained"},"settings.token.refresh-token-time-to-live":["java.time.Duration",600.000000000],"settings.token.authorization-code-time-to-live":["java.time.Duration",300.000000000],"settings.token.device-code-time-to-live":["java.time.Duration",300.000000000]}';
 
+-- token 有效期：AT=5min  RT=1h  不透明 Token 格式（用于演示与自包含 JWT Token 的区别）
+SET @ts_opaque = '{"@class":"java.util.Collections$UnmodifiableMap","settings.token.reuse-refresh-tokens":true,"settings.token.x509-certificate-bound-access-tokens":false,"settings.token.id-token-signature-algorithm":["org.springframework.security.oauth2.jose.jws.SignatureAlgorithm","RS256"],"settings.token.access-token-time-to-live":["java.time.Duration",300.000000000],"settings.token.access-token-format":{"@class":"org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat","value":"reference"},"settings.token.refresh-token-time-to-live":["java.time.Duration",3600.000000000],"settings.token.authorization-code-time-to-live":["java.time.Duration",300.000000000],"settings.token.device-code-time-to-live":["java.time.Duration",300.000000000]}';
+
+-- client settings: 配置 JWT 客户端认证（client_secret_jwt）
+SET @cs_jwt_auth = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":false,"settings.client.require-authorization-consent":false,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":["org.springframework.security.oauth2.jose.jws.MacAlgorithm","HS256"]}';
+
+-- client settings: 配置 Back-channel Logout
+SET @cs_backchannel_logout = '{"@class":"java.util.Collections$UnmodifiableMap","settings.client.require-proof-key":false,"settings.client.require-authorization-consent":false,"settings.client.jwk-set-url":null,"settings.client.token-endpoint-authentication-signing-algorithm":null,"settings.client.settings.token.endpoint.auth.signing.algorithm":null}';
+
 
 -- ============================================================
 -- 1. 传统 Web 应用
@@ -286,5 +295,87 @@ VALUES (
     'http://authlab.test:30000,http://authlab.test:5173',
     'openid,profile,email,read,write',
     @cs_pkce_consent,
+    @ts_default
+);
+
+
+-- ============================================================
+-- 8. 不透明 Token 演示客户端
+--    认证：none（公开客户端）
+--    授权：authorization_code + refresh_token
+--    特点：使用不透明 Token 格式，与自包含 JWT Token 进行对比演示
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris, scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-opaque-008',
+    'spa-opaque-client',
+    NOW(),
+    NULL,
+    '单页应用（不透明 Token）',
+    'none',
+    'authorization_code,refresh_token',
+    'http://authlab.test:5173/callback',
+    'http://authlab.test:5173',
+    'openid,profile,email,read,write',
+    @cs_pkce,
+    @ts_opaque
+);
+
+
+-- ============================================================
+-- 9. JWT 客户端认证演示
+--    认证：client_secret_jwt（使用 JWT 进行客户端认证）
+--    授权：authorization_code + client_credentials
+--    特点：客户端使用签名的 JWT 断言（client_assertion）代替直接传递 client_secret
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris, scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-jwt-auth-009',
+    'jwt-auth-client',
+    NOW(),
+    'jwt-secret-demo-key-0123456789abcdef',
+    'JWT 客户端认证演示',
+    'client_secret_jwt',
+    'authorization_code,refresh_token,client_credentials',
+    'http://authlab.test:5173/callback',
+    'http://authlab.test:5173',
+    'openid,profile,email,read,write',
+    @cs_jwt_auth,
+    @ts_default
+);
+
+
+-- ============================================================
+-- 10. Back-channel Logout 演示
+--    认证：none（公开客户端）
+--    授权：authorization_code + refresh_token
+--    特点：强制 PKCE；授权服务器通过后端通道直接向客户端发送退出请求
+-- ============================================================
+INSERT IGNORE INTO oauth2_registered_client
+(id, client_id, client_id_issued_at, client_secret, client_name,
+ client_authentication_methods, authorization_grant_types,
+ redirect_uris, post_logout_redirect_uris,
+ scopes,
+ client_settings, token_settings)
+VALUES (
+    'client-backchannel-logout-010',
+    'spa-backchannel-logout-client',
+    NOW(),
+    NULL,
+    'SPA（Back-channel Logout）',
+    'none',
+    'authorization_code,refresh_token',
+    'http://authlab.test:5173/callback',
+    'http://authlab.test:5173',
+    'openid,profile,email,read,write',
+    @cs_pkce,
     @ts_default
 );

@@ -558,7 +558,271 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="10. 场景说明" name="scenes">
+        <el-tab-pane label="10. 不透明 Token 演示" name="opaque">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">对比自包含 JWT Token 与不透明 Token 的区别</el-descriptions-item>
+            <el-descriptions-item label="自包含 JWT Token">Token 本身包含所有信息（claims），资源服务器可以直接验证，无需调用 Introspection</el-descriptions-item>
+            <el-descriptions-item label="不透明 Token">Token 只是一个随机字符串，需要通过 Introspection 端点获取 Token 信息</el-descriptions-item>
+            <el-descriptions-item label="客户端对比">spa-public-client（自包含 JWT）vs spa-opaque-client（不透明）</el-descriptions-item>
+          </el-descriptions>
+
+          <el-row :gutter="16" class="mt16 aligned-row">
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>自包含 JWT Token（spa-public-client）</span></template>
+                <div class="actions-row">
+                  <el-button type="primary" @click="startOpaqueDemoLogin('jwt')">获取 JWT Token</el-button>
+                  <el-button type="success" :disabled="!opaqueState.jwtToken" @click="verifyOpaqueToken('jwt')">Introspect Token</el-button>
+                </div>
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Access Token">
+                    <div class="token-box">{{ maskToken(opaqueState.jwtToken) || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Token 格式">
+                    <el-tag type="success">自包含 JWT</el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="直接解析 claims">
+                    <div class="token-box" style="max-height: 120px; overflow-y: auto;">
+                      {{ opaqueState.jwtDecoded ? JSON.stringify(opaqueState.jwtDecoded, null, 2) : '暂无' }}
+                    </div>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>不透明 Token（spa-opaque-client）</span></template>
+                <div class="actions-row">
+                  <el-button type="warning" plain @click="startOpaqueDemoLogin('opaque')">获取不透明 Token</el-button>
+                  <el-button type="success" :disabled="!opaqueState.opaqueToken" @click="verifyOpaqueToken('opaque')">Introspect Token</el-button>
+                </div>
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Access Token">
+                    <div class="token-box">{{ maskToken(opaqueState.opaqueToken) || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Token 格式">
+                    <el-tag type="warning">不透明 (Opaque)</el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="直接解析 claims">
+                    <span style="color: #909399;">无法直接解析，必须调用 Introspection 端点</span>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>Introspection 结果</span></template>
+            <pre class="result-box">{{ prettyResult }}</pre>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>两种 Token 格式对比</span></template>
+            <el-table :data="opaqueComparisonRows" border>
+              <el-table-column prop="dimension" label="对比维度" min-width="180" />
+              <el-table-column prop="jwt" label="自包含 JWT Token" min-width="260" show-overflow-tooltip />
+              <el-table-column prop="opaque" label="不透明 Token" min-width="260" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>结论</span></template>
+            <el-alert
+              class="mb16"
+              type="success"
+              show-icon
+              :closable="false"
+              title="自包含 JWT Token 适合无状态场景，资源服务器可以独立验证 Token，无需额外网络请求。"
+            />
+            <el-alert
+              type="info"
+              show-icon
+              :closable="false"
+              title="不透明 Token 需要每次调用 Introspection 端点验证，但可以快速撤销 Token，适合需要高安全性和灵活撤销控制的场景。"
+            />
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="11. JWT 客户端认证" name="jwt-auth">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">对比 client_secret_basic 与 client_secret_jwt 两种客户端认证方式</el-descriptions-item>
+            <el-descriptions-item label="client_secret_basic">在 Authorization Header 中直接发送 client_id:client_secret 的 Base64 编码</el-descriptions-item>
+            <el-descriptions-item label="client_secret_jwt">生成一个 JWT 断言（client_assertion），使用 client_secret 签名后发送</el-descriptions-item>
+            <el-descriptions-item label="安全优势">JWT 断言有时效性（exp claim）和唯一标识（jti），可防止重放攻击，更适合高安全场景</el-descriptions-item>
+          </el-descriptions>
+
+          <el-row :gutter="16" class="mt16 aligned-row">
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>传统 client_secret_basic 认证</span></template>
+                <el-form label-position="top">
+                  <el-form-item label="client_id">
+                    <el-input v-model="jwtAuthForm.basicClientId" />
+                  </el-form-item>
+                  <el-form-item label="client_secret">
+                    <el-input v-model="jwtAuthForm.basicClientSecret" show-password />
+                  </el-form-item>
+                  <el-form-item label="scope">
+                    <el-input v-model="jwtAuthForm.basicScope" />
+                  </el-form-item>
+                </el-form>
+
+                <div class="actions-row">
+                  <el-button type="primary" @click="getJwtAuthToken('basic')">用 Basic 认证获取 Token</el-button>
+                </div>
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Access Token">
+                    <div class="token-box">{{ maskToken(jwtAuthState.basicToken) || '暂无' }}</div>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>JWT 客户端认证（client_secret_jwt）</span></template>
+                <el-form label-position="top">
+                  <el-form-item label="client_id">
+                    <el-input v-model="jwtAuthForm.jwtClientId" readonly />
+                  </el-form-item>
+                  <el-form-item label="grant_type">
+                    <el-input v-model="jwtAuthForm.jwtGrantType" />
+                  </el-form-item>
+                  <el-form-item label="scope">
+                    <el-input v-model="jwtAuthForm.jwtScope" />
+                  </el-form-item>
+                </el-form>
+
+                <div class="actions-row">
+                  <el-button type="warning" plain @click="getJwtAuthToken('jwt')">用 JWT 断言获取 Token</el-button>
+                  <el-button @click="showJwtAssertionDetails">查看 JWT 断言详情</el-button>
+                </div>
+
+                <el-alert
+                  class="mt16"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                  title="后端将自动生成 client_assertion JWT（使用 client_secret 签名），然后发送到 token 端点。"
+                />
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="Access Token">
+                    <div class="token-box">{{ maskToken(jwtAuthState.jwtToken) || '暂无' }}</div>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16" v-if="jwtAuthState.clientAssertion">
+            <template #header><span>JWT 断言详情</span></template>
+            <div class="token-box" style="max-height: 200px; overflow-y: auto; font-size: 11px;">
+              {{ jwtAuthState.clientAssertion }}
+            </div>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>两种认证方式对比</span></template>
+            <el-table :data="jwtAuthComparisonRows" border>
+              <el-table-column prop="dimension" label="对比维度" min-width="180" />
+              <el-table-column prop="basic" label="client_secret_basic" min-width="260" show-overflow-tooltip />
+              <el-table-column prop="jwt" label="client_secret_jwt" min-width="260" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="12. Back-channel Logout" name="backchannel-logout">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="演示目标">对比 Front-channel Logout 和 Back-channel Logout</el-descriptions-item>
+            <el-descriptions-item label="Front-channel Logout">浏览器重定向到客户端的 post_logout_redirect_uri，依赖浏览器执行</el-descriptions-item>
+            <el-descriptions-item label="Back-channel Logout">授权服务器直接通过 HTTP POST 向客户端发送退出请求，不依赖浏览器</el-descriptions-item>
+            <el-descriptions-item label="优势">Back-channel Logout 可以确保客户端收到退出通知，即使用户关闭了浏览器</el-descriptions-item>
+          </el-descriptions>
+
+          <el-row :gutter="16" class="mt16 aligned-row">
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>Front-channel Logout（已实现）</span></template>
+                <div class="actions-row">
+                  <el-button plain @click="prepareDemo12Session">登录当前演示</el-button>
+                  <el-button type="primary" :disabled="!idToken" @click="startFrontChannelLogout">发起 Front-channel Logout</el-button>
+                </div>
+
+                <el-alert
+                  class="mt16"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                  title="前端携带 id_token_hint 跳转到授权服务器的 end_session_endpoint，授权服务器再跳转回 post_logout_redirect_uri。"
+                />
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="ID Token">
+                    <div class="token-box">{{ maskToken(idToken) || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="流程说明">
+                    浏览器 → 授权服务器 → 浏览器 → 客户端
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+
+            <el-col :xs="24" :md="12">
+              <el-card shadow="never">
+                <template #header><span>Back-channel Logout（演示）</span></template>
+                <div class="actions-row">
+                  <el-button plain @click="prepareDemo12Session">登录当前演示</el-button>
+                  <el-button type="warning" plain :disabled="!backchannelLogoutState.hasToken" @click="startBackchannelLogoutDemo">模拟 Back-channel Logout</el-button>
+                  <el-button @click="checkBackchannelLogoutStatus">查看 Logout 状态</el-button>
+                </div>
+
+                <el-alert
+                  class="mt16"
+                  type="warning"
+                  show-icon
+                  :closable="false"
+                  title="由于 Back-channel Logout 需要授权服务器主动推送，本演示使用后端模拟客户端接收 logout_token 的场景。"
+                />
+
+                <el-descriptions :column="1" border class="mt16">
+                  <el-descriptions-item label="客户端 ID">
+                    {{ backchannelLogoutState.clientId || 'spa-backchannel-logout-client' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="客户端本地会话">
+                    {{ backchannelLogoutState.hasToken ? '活跃' : '已清除' }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Logout Token">
+                    <div class="token-box">{{ backchannelLogoutState.logoutToken || '暂无' }}</div>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="流程说明">
+                    授权服务器 → 后端客户端（HTTP POST），无需浏览器参与
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </el-col>
+          </el-row>
+
+          <el-card shadow="never" class="mt16" v-if="backchannelLogoutState.lastLogoutInfo">
+            <template #header><span>最近 Back-channel Logout 信息</span></template>
+            <pre class="result-box">{{ JSON.stringify(backchannelLogoutState.lastLogoutInfo, null, 2) }}</pre>
+          </el-card>
+
+          <el-card shadow="never" class="mt16">
+            <template #header><span>两种 Logout 方式对比</span></template>
+            <el-table :data="backchannelLogoutComparisonRows" border>
+              <el-table-column prop="dimension" label="对比维度" min-width="180" />
+              <el-table-column prop="frontChannel" label="Front-channel Logout" min-width="260" show-overflow-tooltip />
+              <el-table-column prop="backChannel" label="Back-channel Logout" min-width="260" show-overflow-tooltip />
+            </el-table>
+          </el-card>
+        </el-tab-pane>
+
+        <el-tab-pane label="13. 场景说明" name="scenes">
           <div class="scenes-pane">
           <el-timeline>
             <el-timeline-item timestamp="前后端分离登录" placement="top">
@@ -613,8 +877,10 @@ import TokenDisplay from '../components/TokenDisplay.vue'
 
 const oauth2SyncChannel = 'oauth2-token-sync-flows-demo'
 const claimsSyncChannel = 'oauth2-token-sync-flows-demo-claims'
+const oauth2SyncChannelOpaque = 'oauth2-token-sync-flows-demo-opaque'
 let disposeTokenSync = null
 let disposeClaimsSync = null
+let disposeOpaqueSync = null
 
 const authServerOrigin = getAuthServerOrigin()
 
@@ -676,7 +942,10 @@ const flowNavItems = [
   { key: 'par', label: '7. Pushed Authorization Request（PAR）' },
   { key: 'device', label: '8. Device Code' },
   { key: 'claims', label: '9. JWT Claims 差异' },
-  { key: 'scenes', label: '10. 场景说明' }
+  { key: 'opaque', label: '10. 不透明 Token 演示' },
+  { key: 'jwt-auth', label: '11. JWT 客户端认证' },
+  { key: 'backchannel-logout', label: '12. Back-channel Logout' },
+  { key: 'scenes', label: '13. 场景说明' }
 ]
 const flowTabNames = flowNavItems.map(item => item.key)
 
@@ -747,6 +1016,123 @@ const parState = reactive({
   expiresIn: 0,
   lastStatus: ''
 })
+
+const opaqueState = reactive({
+  jwtToken: '',
+  opaqueToken: '',
+  jwtDecoded: null,
+  opaqueClientId: 'spa-opaque-client',
+  opaqueClientSecret: '',
+  introspectionClientId: 'all-in-one-client',
+  introspectionClientSecret: 'all-secret'
+})
+
+const jwtAuthForm = reactive({
+  basicClientId: 'm2m-service-client',
+  basicClientSecret: 'm2m-secret',
+  basicScope: 'read write',
+  jwtClientId: 'jwt-auth-client',
+  jwtGrantType: 'client_credentials',
+  jwtScope: 'read write'
+})
+
+const jwtAuthState = reactive({
+  basicToken: '',
+  jwtToken: '',
+  clientAssertion: '',
+  clientAssertionDecoded: null
+})
+
+const backchannelLogoutState = reactive({
+  clientId: 'spa-backchannel-logout-client',
+  hasToken: false,
+  logoutToken: '',
+  lastLogoutInfo: null
+})
+
+const backchannelLogoutComparisonRows = computed(() => [
+  {
+    dimension: '触发方式',
+    frontChannel: '浏览器跳转到 end_session_endpoint',
+    backChannel: '授权服务器 POST 到客户端的 logout 端点'
+  },
+  {
+    dimension: '浏览器依赖',
+    frontChannel: '完全依赖浏览器执行',
+    backChannel: '不依赖浏览器，后端到后端通信'
+  },
+  {
+    dimension: '可靠性',
+    frontChannel: '可能被用户关闭浏览器中断',
+    backChannel: '更可靠，授权服务器确认客户端收到请求'
+  },
+  {
+    dimension: '适用场景',
+    frontChannel: '简单场景，浏览器环境',
+    backChannel: '多设备同步、高可靠性要求'
+  },
+  {
+    dimension: '实现复杂度',
+    frontChannel: '简单，标准重定向流程',
+    backChannel: '需要客户端公开 HTTPS 端点，验证 logout_token'
+  }
+])
+
+const jwtAuthComparisonRows = computed(() => [
+  {
+    dimension: '认证方式',
+    basic: 'Authorization: Basic base64(client_id:client_secret)',
+    jwt: 'client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+  },
+  {
+    dimension: '密钥传输',
+    basic: 'client_secret 在每次请求中直接发送',
+    jwt: 'client_secret 仅用于签名，不直接传输'
+  },
+  {
+    dimension: '时效性控制',
+    basic: '无内置时效控制，依赖服务端配置',
+    jwt: 'JWT 包含 exp claim，可精确控制断言有效期'
+  },
+  {
+    dimension: '防重放',
+    basic: '需要依赖其他机制（如 nonce）',
+    jwt: 'JWT 的 jti claim 可用于防重放'
+  },
+  {
+    dimension: '适用场景',
+    basic: '大多数标准 OAuth2 客户端',
+    jwt: '高安全要求、需要细粒度审计的场景'
+  }
+])
+
+const opaqueComparisonRows = computed(() => [
+  {
+    dimension: 'Token 格式',
+    jwt: '自包含 JWT（三段式 Base64 字符串）',
+    opaque: '不透明字符串（随机标识符）'
+  },
+  {
+    dimension: '资源服务器验证',
+    jwt: '可直接通过本地 JWKS 验证签名，无需网络请求',
+    opaque: '必须调用 Introspection 端点才能获取 Token 信息'
+  },
+  {
+    dimension: 'Token 撤销',
+    jwt: '自包含 Token 签发后无法撤回，只能等过期',
+    opaque: '授权服务器可立即撤销，Introspection 返回 active=false'
+  },
+  {
+    dimension: '性能开销',
+    jwt: '无额外网络开销，但 Token 体积较大',
+    opaque: '每次验证需调用 Introspection 端点，但 Token 体积小'
+  },
+  {
+    dimension: '适用场景',
+    jwt: '微服务、无状态 API、分布式系统',
+    opaque: '需要精细权限控制、快速撤销、合规审计场景'
+  }
+])
 
 const tokenLifecycleState = reactive({
   clientId: sessionStorage.getItem('oauth2_client_id') || 'spa-public-client',
@@ -936,7 +1322,7 @@ function applySyncedTokens(payload) {
   }
 
   saveTokens(payload)
-  Object.assign(tokenState, getTokenState())
+  syncTokenStateFromStorage()
   loadTokenLifecycleFromCurrentSession()
   result.value = {
     operation: 'oauth2_callback_sync',
@@ -949,12 +1335,14 @@ function applySyncedTokens(payload) {
 
 function syncTokenStateFromStorage() {
   Object.assign(tokenState, getTokenState())
+  backchannelLogoutState.hasToken = Boolean(tokenState.accessToken || tokenState.idToken)
 }
 
 onMounted(() => {
-  Object.assign(tokenState, getTokenState())
+  syncTokenStateFromStorage()
   disposeTokenSync = createOAuth2SyncListener(oauth2SyncChannel, applySyncedTokens)
   disposeClaimsSync = createOAuth2SyncListener(claimsSyncChannel, applySyncedTokens)
+  disposeOpaqueSync = createOAuth2SyncListener(oauth2SyncChannelOpaque, handleOpaqueSyncTokens)
   lifecycleTimer = window.setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 1000)
@@ -965,6 +1353,7 @@ onBeforeUnmount(() => {
   devicePollingAborted = true
   disposeTokenSync?.()
   disposeClaimsSync?.()
+  disposeOpaqueSync?.()
   if (lifecycleTimer) {
     window.clearInterval(lifecycleTimer)
     lifecycleTimer = null
@@ -1235,6 +1624,208 @@ async function startParFlow() {
   }
 }
 
+async function startOpaqueDemoLogin(mode) {
+  const clientId = mode === 'jwt' ? 'spa-public-client' : 'spa-opaque-client'
+  result.value = {
+    operation: 'opaque_demo_login_prepare',
+    mode,
+    clientId,
+    message: `即将使用 ${clientId} 发起授权登录，完成后的 token 会同步回当前页。`
+  }
+
+  await startAuthorizationCodeFlow({
+    clientId,
+    scope: 'openid profile email read write',
+    usePkce: true,
+    scenario: 'opaque-demo',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannelOpaque,
+    syncTarget: 'opaque',
+    returnTo: '/flows?tab=opaque'
+  })
+}
+
+function handleOpaqueSyncTokens(payload) {
+  if (payload?.syncTarget === 'opaque') {
+    const clientId = payload.client_id || 'spa-public-client'
+    if (clientId === 'spa-opaque-client') {
+      opaqueState.opaqueToken = payload.access_token || ''
+      result.value = {
+        operation: 'opaque_token_sync',
+        clientId,
+        token: payload.access_token,
+        message: '不透明 Token 已同步。可尝试直接解析和 Introspect 对比。'
+      }
+      ElMessage.success('不透明 Token 获取成功')
+    } else {
+      opaqueState.jwtToken = payload.access_token || ''
+      opaqueState.jwtDecoded = decodeJwt(payload.access_token)
+      result.value = {
+        operation: 'jwt_token_sync',
+        clientId,
+        tokenPreview: maskToken(payload.access_token),
+        decoded: opaqueState.jwtDecoded,
+        message: 'JWT Token 已同步。可直接解析 claims，无需 Introspection。'
+      }
+      ElMessage.success('JWT Token 获取成功')
+    }
+    return
+  }
+}
+
+async function verifyOpaqueToken(mode) {
+  const token = mode === 'jwt' ? opaqueState.jwtToken : opaqueState.opaqueToken
+  if (!token) {
+    ElMessage.warning('请先获取 Token')
+    return
+  }
+
+  try {
+    const clientId = mode === 'jwt' ? 'spa-public-client' : 'spa-opaque-client'
+    const basic = generateBasicAuth(opaqueState.introspectionClientId, opaqueState.introspectionClientSecret)
+    const { data } = await oauth2Api.introspectToken({
+      token,
+      token_type_hint: 'access_token'
+    }, {
+      Authorization: `Basic ${basic}`
+    })
+
+    result.value = {
+      operation: 'opaque_introspection',
+      mode,
+      clientId,
+      introspectionClientId: opaqueState.introspectionClientId,
+      introspection: data,
+      message: data.active
+        ? 'Token 有效（active=true）。注意对比两种格式的 Introspection 返回内容。'
+        : 'Token 已失效（active=false）。'
+    }
+  } catch (e) {
+    showError(e)
+  }
+}
+
+async function getJwtAuthToken(mode) {
+  try {
+    let data
+
+    if (mode === 'basic') {
+      const basic = btoa(`${jwtAuthForm.basicClientId}:${jwtAuthForm.basicClientSecret}`)
+      ;({ data } = await oauth2Api.clientCredentials({
+        grant_type: 'client_credentials',
+        scope: jwtAuthForm.basicScope
+      }, {
+        Authorization: `Basic ${basic}`
+      }))
+      jwtAuthState.basicToken = data.access_token
+    } else {
+      ;({ data } = await oauth2Api.tokenWithJwtAuth({
+        client_id: jwtAuthForm.jwtClientId,
+        grant_type: jwtAuthForm.jwtGrantType,
+        scope: jwtAuthForm.jwtScope
+      }))
+      jwtAuthState.jwtToken = data.access_token
+      jwtAuthState.clientAssertion = data.client_assertion || ''
+      jwtAuthState.clientAssertionDecoded = decodeJwt(data.client_assertion)
+    }
+
+    result.value = {
+      operation: `jwt_auth_${mode}`,
+      authMethod: mode === 'basic' ? 'client_secret_basic' : 'client_secret_jwt',
+      clientId: mode === 'basic' ? jwtAuthForm.basicClientId : jwtAuthForm.jwtClientId,
+      response: data,
+      message: mode === 'basic'
+        ? '使用 Basic 认证成功获取 Token'
+        : '使用 JWT 断言认证成功获取 Token'
+    }
+    ElMessage.success(`${mode === 'basic' ? 'Basic' : 'JWT'} 认证成功`)
+  } catch (e) {
+    showError(e)
+  }
+}
+
+function showJwtAssertionDetails() {
+  if (!jwtAuthState.clientAssertion) {
+    ElMessage.warning('请先使用 JWT 认证获取 Token')
+    return
+  }
+  result.value = {
+    operation: 'jwt_assertion_details',
+    clientId: jwtAuthForm.jwtClientId,
+    assertionPreview: `${jwtAuthState.clientAssertion.slice(0, 40)}...`,
+    header: jwtAuthState.clientAssertionDecoded?.header || null,
+    payload: jwtAuthState.clientAssertionDecoded?.payload || null,
+    note: '这里展示的是本次 token 请求实际使用的 client_assertion。它包含 iss/sub/aud/exp/iat/jti 等声明，并由共享密钥签名。',
+    message: 'JWT 断言详情已写入结果面板，并在下方卡片中显示原文。'
+  }
+}
+
+async function startBackchannelLogoutDemo() {
+  try {
+    if (!accessToken.value && !idToken.value) {
+      ElMessage.warning('请先完成一次登录，确保当前会话中已有 Token')
+      return
+    }
+
+    const { data } = await oauth2Api.backchannelLogout({
+      client_id: backchannelLogoutState.clientId,
+      id_token_hint: idToken.value || ''
+    })
+
+    backchannelLogoutState.logoutToken = data.logout_token || ''
+    backchannelLogoutState.lastLogoutInfo = data
+    clearTokens()
+    syncTokenStateFromStorage()
+
+    result.value = {
+      operation: 'backchannel_logout_demo',
+      clientId: backchannelLogoutState.clientId,
+      clientSessionCleared: data.clientSessionCleared,
+      logoutInfo: data,
+      message: data.clientSessionCleared
+        ? '已模拟授权服务器生成 logout_token、向客户端投递，并清理本地会话。'
+        : '已模拟授权服务器向客户端发送 Back-channel Logout 请求。'
+    }
+    ElMessage.success('Back-channel Logout 模拟成功')
+  } catch (e) {
+    showError(e)
+  }
+}
+
+async function prepareDemo12Session() {
+  backchannelLogoutState.logoutToken = ''
+  backchannelLogoutState.lastLogoutInfo = null
+
+  result.value = {
+    operation: 'demo12_session_prepare',
+    clientId: backchannelLogoutState.clientId,
+    scope: 'openid profile email read write',
+    message: '即将为当前 Logout 演示在新窗口中发起登录，完成后会把 access_token 与 id_token 同步回当前页，用于 Front-channel 和 Back-channel Logout。'
+  }
+
+  await startAuthorizationCodeFlow({
+    clientId: backchannelLogoutState.clientId,
+    scope: 'openid profile email read write',
+    usePkce: true,
+    scenario: 'backchannel-logout',
+    openInNewWindow: true,
+    returnTo: '/flows?tab=backchannel-logout'
+  })
+}
+
+async function checkBackchannelLogoutStatus() {
+  if (!backchannelLogoutState.lastLogoutInfo) {
+    ElMessage.warning('暂无 Back-channel Logout 记录')
+    return
+  }
+  result.value = {
+    operation: 'backchannel_logout_status',
+    lastLogoutInfo: backchannelLogoutState.lastLogoutInfo,
+    localSession: backchannelLogoutState.hasToken ? 'active' : 'cleared',
+    message: 'Back-channel Logout 状态已显示在下方。'
+  }
+}
+
 async function startAuthorizationCodeFlow({
   clientId,
   scope,
@@ -1419,6 +2010,14 @@ async function startOidcLogout() {
   } catch (e) {
     showError(e)
   }
+}
+
+async function startFrontChannelLogout() {
+  result.value = {
+    operation: 'front_channel_logout_prepare',
+    message: '即将发起 Front-channel Logout。浏览器将跳转到授权服务器的 end_session_endpoint。'
+  }
+  await startOidcLogout()
 }
 
 async function getM2mToken() {

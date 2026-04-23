@@ -3,11 +3,14 @@ package com.demo.authserver.config;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -21,6 +24,7 @@ import java.time.Instant;
 public class DataInitializer implements ApplicationRunner {
 
   private static final String DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
+  private static final String JWT_AUTH_CLIENT_SECRET = "jwt-secret-demo-key-0123456789abcdef";
   private static final String URL_FRONTEND_BASE = "http://authlab.test:5173";
   private static final String URL_FRONTEND_CALLBACK = URL_FRONTEND_BASE + "/callback";
   private static final String URL_BACKEND_BASE = "http://authlab.test:30000";
@@ -29,14 +33,17 @@ public class DataInitializer implements ApplicationRunner {
   private final JdbcUserDetailsManager userDetailsManager;
   private final PasswordEncoder passwordEncoder;
   private final RegisteredClientRepository registeredClientRepository;
+  private final JdbcTemplate jdbcTemplate;
 
   public DataInitializer(
       JdbcUserDetailsManager userDetailsManager,
       PasswordEncoder passwordEncoder,
-      RegisteredClientRepository registeredClientRepository) {
+      RegisteredClientRepository registeredClientRepository,
+      JdbcTemplate jdbcTemplate) {
     this.userDetailsManager = userDetailsManager;
     this.passwordEncoder = passwordEncoder;
     this.registeredClientRepository = registeredClientRepository;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   @Override
@@ -66,6 +73,9 @@ public class DataInitializer implements ApplicationRunner {
     ensurePostAuthClientExists();
     ensureDeviceFlowClientExists();
     ensureAllInOneClientExists();
+    ensureBackchannelLogoutClientUpToDate();
+    ensureOpaqueClientUpToDate();
+    ensureJwtAuthClientUpToDate();
   }
 
   private void ensureWebappClientExists() {
@@ -120,6 +130,73 @@ public class DataInitializer implements ApplicationRunner {
     if (registeredClientRepository.findByClientId("all-in-one-client") == null) {
       registeredClientRepository.save(allInOneClient());
     }
+  }
+
+  private void ensureBackchannelLogoutClientUpToDate() {
+    RegisteredClient existing = registeredClientRepository.findByClientId("spa-backchannel-logout-client");
+    if (existing == null) {
+      registeredClientRepository.save(backchannelLogoutClient());
+      return;
+    }
+
+    boolean publicClient = existing.getClientAuthenticationMethods().stream()
+        .map(ClientAuthenticationMethod::getValue)
+        .anyMatch(ClientAuthenticationMethod.NONE.getValue()::equals);
+    boolean proofKeyRequired = existing.getClientSettings().isRequireProofKey();
+    boolean noSecret = existing.getClientSecret() == null;
+
+    if (publicClient && proofKeyRequired && noSecret) {
+      return;
+    }
+
+    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
+    registeredClientRepository.save(backchannelLogoutClient());
+  }
+
+  private void ensureOpaqueClientUpToDate() {
+    RegisteredClient existing = registeredClientRepository.findByClientId("spa-opaque-client");
+    if (existing == null) {
+      registeredClientRepository.save(opaqueClient());
+      return;
+    }
+
+    String accessTokenFormat = existing.getTokenSettings().getAccessTokenFormat().getValue();
+    if (OAuth2TokenFormat.REFERENCE.getValue().equals(accessTokenFormat)) {
+      return;
+    }
+
+    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
+    registeredClientRepository.save(opaqueClient());
+  }
+
+  private void ensureJwtAuthClientUpToDate() {
+    RegisteredClient existing = registeredClientRepository.findByClientId("jwt-auth-client");
+    if (existing == null) {
+      registeredClientRepository.save(jwtAuthClient());
+      return;
+    }
+
+    boolean usesJwtClientAuth = existing.getClientAuthenticationMethods().stream()
+        .map(ClientAuthenticationMethod::getValue)
+        .anyMatch("client_secret_jwt"::equals);
+    String signingAlgorithm = existing.getClientSettings().getTokenEndpointAuthenticationSigningAlgorithm() != null
+        ? existing.getClientSettings().getTokenEndpointAuthenticationSigningAlgorithm().getName()
+        : null;
+
+    boolean secretMatches = JWT_AUTH_CLIENT_SECRET.equals(existing.getClientSecret());
+
+    if (usesJwtClientAuth && MacAlgorithm.HS256.getName().equals(signingAlgorithm) && secretMatches) {
+      return;
+    }
+
+    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
+    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
+    registeredClientRepository.save(jwtAuthClient());
   }
 
   private RegisteredClient webappClient() {
@@ -367,6 +444,97 @@ public class DataInitializer implements ApplicationRunner {
         .clientSettings(ClientSettings.builder()
             .requireProofKey(true)
             .requireAuthorizationConsent(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
+
+  private RegisteredClient opaqueClient() {
+    return RegisteredClient.withId("client-opaque-008")
+        .clientId("spa-opaque-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("单页应用（不透明 Token）")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .accessTokenFormat(OAuth2TokenFormat.REFERENCE)
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
+
+  private RegisteredClient backchannelLogoutClient() {
+    return RegisteredClient.withId("client-backchannel-logout-010")
+        .clientId("spa-backchannel-logout-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("单页应用（Back-channel Logout 演示）")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(true)
+            .requireAuthorizationConsent(false)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .reuseRefreshTokens(true)
+            .accessTokenTimeToLive(Duration.ofMinutes(5))
+            .refreshTokenTimeToLive(Duration.ofHours(1))
+            .authorizationCodeTimeToLive(Duration.ofMinutes(5))
+            .deviceCodeTimeToLive(Duration.ofMinutes(5))
+            .build())
+        .build();
+  }
+
+  private RegisteredClient jwtAuthClient() {
+    return RegisteredClient.withId("client-jwt-auth-009")
+        .clientId("jwt-auth-client")
+        .clientIdIssuedAt(Instant.now())
+        .clientName("JWT 客户端认证演示")
+        .clientSecret(JWT_AUTH_CLIENT_SECRET)
+        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+        .redirectUri(URL_FRONTEND_CALLBACK)
+        .postLogoutRedirectUri(URL_FRONTEND_BASE)
+        .scope("openid")
+        .scope("profile")
+        .scope("email")
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireProofKey(false)
+            .requireAuthorizationConsent(false)
+            .tokenEndpointAuthenticationSigningAlgorithm(MacAlgorithm.HS256)
             .build())
         .tokenSettings(TokenSettings.builder()
             .reuseRefreshTokens(true)
