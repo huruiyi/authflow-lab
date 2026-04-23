@@ -236,7 +236,7 @@ function writeTokenLifecycleSummary() {
 
 <style scoped>
 .token-lifecycle-container {
-  padding: 6px 4px;
+  padding: 12px 0;
   overflow-x: hidden;
 }
 
@@ -247,8 +247,6 @@ function writeTokenLifecycleSummary() {
 
 .cards-row {
   margin: 12px 0;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
 }
 
 .actions-row {

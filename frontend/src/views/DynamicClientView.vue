@@ -25,7 +25,7 @@
           <el-form-item label="scope（空格分隔）">
             <el-input v-model="dynamicClientForm.scope" placeholder="openid profile email read write" />
           </el-form-item>
-          <el-form-item label="requireAuthorizationConsent">
+          <el-form-item label="授权许可">
             <el-switch v-model="dynamicClientForm.requireAuthorizationConsent" />
           </el-form-item>
         </el-form>

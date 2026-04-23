@@ -12,6 +12,9 @@
         </div>
       </div>
       <div class="header-right">
+        <el-button type="primary" size="small" class="all-in-one-btn" @click="openAllInOne">
+          All in One
+        </el-button>
         <el-button type="default" size="small" class="logout-btn" @click="handleLogout">
           <el-icon><SwitchButton /></el-icon>
           退出
@@ -23,18 +26,16 @@
     <el-main class="main-content">
       <el-container class="content-shell">
         <!-- Navigation Sidebar -->
-        <el-aside class="side-nav">
-          <el-menu class="side-menu" :default-active="currentRoute" :default-openeds="defaultOpeneds" @select="handleNavSelect">
-            <el-sub-menu v-for="group in navGroups" :key="group.key" :index="group.key">
-              <template #title>
-                <el-icon><Grid /></el-icon>
-                <span>{{ group.label }}</span>
-              </template>
-              <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">
-                <el-icon><component :is="item.icon" /></el-icon>
-                <span>{{ item.label }}</span>
-              </el-menu-item>
-            </el-sub-menu>
+        <el-aside class="side-nav" width="320px">
+          <div class="side-nav-header">
+            <div class="side-nav-title">OAuth2 流程演示</div>
+            <div class="side-nav-subtitle">快速访问</div>
+          </div>
+          <el-menu class="side-menu" :default-active="currentRoute" @select="handleNavSelect">
+            <el-menu-item v-for="item in navItems" :key="item.path" :index="item.path">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </el-menu-item>
           </el-menu>
         </el-aside>
 
@@ -55,29 +56,19 @@ import { authApi } from '../api/auth'
 const route = useRoute()
 const router = useRouter()
 
-const navGroups = [
-  {
-    key: 'oauth2-demos',
-    label: 'OAuth2 流程演示',
-    items: [
-      { path: '/pkce', label: '1. Authorization Code + PKCE', icon: 'Key' },
-      { path: '/m2m', label: '2. Client Credentials', icon: 'Connection' },
-      { path: '/client-auth', label: '3. Client 认证方式差异', icon: 'Lock' },
-      { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比', icon: 'Warning' },
-      { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换', icon: 'Refresh' },
-      { path: '/dynamic-client', label: '6. Dynamic Client Registration', icon: 'Plus' },
-      { path: '/par', label: '7. Pushed Authorization Request（PAR）', icon: 'Upload' },
-      { path: '/device', label: '8. Device Code', icon: 'Monitor' },
-      { path: '/claims', label: '9. JWT Claims 差异', icon: 'Tickets' },
-      { path: '/scenarios', label: '10. 场景说明', icon: 'Reading' },
-      { path: '/clients', label: '11. Client 管理', icon: 'User' },
-      { path: '/flows-demo', label: 'Flows Demo', newWindow: true, icon: 'DataBoard' }
-    ]
-  }
+const navItems = [
+  { path: '/pkce', label: '1. Authorization Code + PKCE', icon: 'Key' },
+  { path: '/m2m', label: '2. Client Credentials', icon: 'Connection' },
+  { path: '/client-auth', label: '3. Client 认证方式差异', icon: 'Lock' },
+  { path: '/no-pkce', label: '4. Authorization Code without PKCE', icon: 'Warning' },
+  { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换', icon: 'Refresh' },
+  { path: '/dynamic-client', label: '6. Dynamic Client Registration', icon: 'Plus' },
+  { path: '/par', label: '7. Pushed Authorization Request（PAR）', icon: 'Upload' },
+  { path: '/device', label: '8. Device Code', icon: 'Monitor' },
+  { path: '/claims', label: '9. JWT Claims 差异', icon: 'Tickets' },
+  { path: '/scenarios', label: '10. 场景说明', icon: 'Reading' },
+  { path: '/clients', label: '11. Client 管理', icon: 'User' }
 ]
-
-const navItems = navGroups.flatMap(group => group.items)
-const defaultOpeneds = navGroups.map(group => group.key)
 
 const currentRoute = computed(() => route.path)
 
@@ -95,6 +86,10 @@ function handleNavSelect(path) {
   if (path !== route.path) {
     router.push(path)
   }
+}
+
+function openAllInOne() {
+  window.open('/flows-demo', '_blank')
 }
 
 async function handleLogout() {
@@ -222,6 +217,13 @@ async function handleLogout() {
   transition: all 0.3s ease;
 }
 
+.all-in-one-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+}
+
 .logout-btn:hover {
   background: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
@@ -240,20 +242,20 @@ async function handleLogout() {
 }
 
 .side-nav-header {
-  padding: 12px 12px 8px;
+  padding: 10px 10px 8px;
   border-bottom: 1px solid #f0f0f0;
   background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
 }
 
 .side-nav-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #303133;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .side-nav-subtitle {
-  font-size: 11px;
+  font-size: 10px;
   color: #909399;
 }
 
@@ -261,7 +263,9 @@ async function handleLogout() {
   border-right: none;
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px;
+  --el-menu-item-height: 34px;
+  --el-menu-sub-item-height: 34px;
 }
 
 .side-menu::-webkit-scrollbar {
@@ -273,44 +277,32 @@ async function handleLogout() {
   border-radius: 2px;
 }
 
-:deep(.el-sub-menu) {
-  margin-bottom: 6px;
-}
-
-:deep(.el-sub-menu__title),
-:deep(.el-menu-item) {
-  border-radius: 8px;
-  margin: 4px 0;
-  min-height: 40px;
-  line-height: 40px;
-  padding: 0 12px;
-  font-size: 13px;
+.side-menu :deep(.el-menu-item) {
+  border-radius: 6px;
+  margin: 1px 0;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
+  font-size: 12px;
   transition: all 0.3s ease;
 }
 
-:deep(.el-sub-menu__title) {
-  font-weight: 600;
-  color: #303133;
-}
-
-:deep(.el-sub-menu__title:hover),
-:deep(.el-menu-item:hover) {
+.side-menu :deep(.el-menu-item:hover) {
   background: rgba(102, 126, 234, 0.1);
   transform: translateX(2px);
 }
 
-:deep(.el-menu-item.is-active) {
+.side-menu :deep(.el-menu-item.is-active) {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
 }
 
-:deep(.el-sub-menu__title .el-icon),
-:deep(.el-menu-item .el-icon) {
-  margin-right: 8px;
-  font-size: 16px;
+.side-menu :deep(.el-menu-item .el-icon) {
+  margin-right: 5px;
+  font-size: 14px;
 }
 
-:deep(.el-menu-item.is-active .el-icon) {
+.side-menu :deep(.el-menu-item.is-active .el-icon) {
   color: #fff;
 }
 
@@ -323,11 +315,6 @@ async function handleLogout() {
 }
 
 /* Responsive Design */
-@media (max-width: 1200px) {
-  .side-nav {
-    width: 240px;
-  }
-}
 
 @media (max-width: 960px) {
   .content-shell {

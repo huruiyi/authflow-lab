@@ -25,7 +25,7 @@
 
     <el-main class="main-content">
       <el-container class="content-shell">
-        <el-aside class="side-nav">
+        <el-aside class="side-nav" width="320px">
           <div class="side-nav-header">
             <div class="side-nav-title">功能导航</div>
             <div class="side-nav-subtitle">快速访问</div>
@@ -252,7 +252,7 @@ const flowNavItems = [
   { path: '/pkce', label: '1. Authorization Code + PKCE' },
   { path: '/m2m', label: '2. Client Credentials' },
   { path: '/client-auth', label: '3. Client 认证方式差异' },
-  { path: '/no-pkce', label: '4. Authorization Code without PKCE 对比' },
+  { path: '/no-pkce', label: '4. Authorization Code without PKCE' },
   { path: '/token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
   { path: '/dynamic-client', label: '6. Dynamic Client Registration' },
   { path: '/par', label: '7. Pushed Authorization Request（PAR）' },
@@ -507,7 +507,7 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 
 /* Side Navigation */
 .side-nav {
-  width: 248px;
+  width: 320px;
   max-width: 100%;
   background: #fff;
   border-radius: 8px;
@@ -518,20 +518,20 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 }
 
 .side-nav-header {
-  padding: 14px 12px 10px;
+  padding: 10px 10px 8px;
   border-bottom: 1px solid #f0f0f0;
   background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
 }
 
 .side-nav-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #303133;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .side-nav-subtitle {
-  font-size: 11px;
+  font-size: 10px;
   color: #909399;
 }
 
@@ -539,7 +539,7 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
   border-right: none;
   flex: 1;
   overflow-y: auto;
-  padding: 6px 6px;
+  padding: 4px;
 }
 
 .side-menu::-webkit-scrollbar {
@@ -553,11 +553,11 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 
 :deep(.el-menu-item) {
   border-radius: 6px;
-  margin: 2px 0;
-  height: 38px;
-  line-height: 38px;
-  padding: 0 10px;
-  font-size: 13px;
+  margin: 1px 0;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
+  font-size: 12px;
   transition: all 0.3s ease;
 }
 
@@ -572,8 +572,8 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 }
 
 :deep(.el-menu-item .el-icon) {
-  margin-right: 6px;
-  font-size: 15px;
+  margin-right: 5px;
+  font-size: 14px;
 }
 
 /* Main Content Area */
@@ -739,9 +739,6 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-  .side-nav {
-    width: 240px;
-  }
 
   .table-container {
     padding: 16px;

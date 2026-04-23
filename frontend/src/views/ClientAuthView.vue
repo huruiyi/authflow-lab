@@ -6,15 +6,9 @@
           <el-descriptions-item label="演示目标">对比 client_secret_basic、client_secret_post、none 三种 token endpoint 客户端认证模型</el-descriptions-item>
           <el-descriptions-item label="重点理解">机密客户端要证明"我是谁"，公开客户端则不保存 secret，而是依赖 PKCE</el-descriptions-item>
           <el-descriptions-item label="当前客户端">all-in-one-client 同时支持 basic/post；spa-public-client 代表公开客户端</el-descriptions-item>
+          <el-descriptions-item label="备注">同一个 token endpoint，机密客户端可以通过 Header 或 Body 认证；公开客户端不应持有 client_secret。</el-descriptions-item>
         </el-descriptions>
       </el-card>
-
-      <el-alert
-        type="info"
-        show-icon
-        :closable="false"
-        title="同一个 token endpoint，机密客户端可以通过 Header 或 Body 认证；公开客户端不应持有 client_secret。"
-      />
 
       <el-row :gutter="12" class="cards-row">
         <el-col :xs="24" :md="12">
@@ -352,8 +346,7 @@ function writeClientAuthSummary() {
 
 <style scoped>
 .client-auth-container {
-  padding: 6px 4px;
-  overflow-x: hidden;
+  padding: 12px 0;
 }
 
 .info-card {
@@ -363,8 +356,6 @@ function writeClientAuthSummary() {
 
 .cards-row {
   margin: 12px 0;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
 }
 
 .actions-row {

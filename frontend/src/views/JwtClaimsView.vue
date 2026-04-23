@@ -9,19 +9,20 @@
         </el-descriptions>
       </el-card>
 
-      <el-alert
-        class="mt16"
-        type="info"
-        show-icon
-        :closable="false"
-        title="id_token 更偏身份声明，access_token 更偏资源访问授权；client_credentials token 通常没有用户身份字段。"
-      />
-
-      <div class="actions-row">
-        <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
-        <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
-        <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
-      </div>
+      <el-card shadow="never" class="info-card">
+        <el-alert
+            class="mt16"
+            type="info"
+            show-icon
+            :closable="false"
+            title="id_token 更偏身份声明，access_token 更偏资源访问授权；client_credentials token 通常没有用户身份字段。"
+        />
+        <div class="actions-row">
+          <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
+          <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
+          <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
+        </div>
+      </el-card>
 
       <el-row :gutter="16" class="mt16">
         <el-col :xs="24" :md="8">

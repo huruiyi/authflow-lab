@@ -2,19 +2,27 @@
   <el-container class="layout">
     <el-header class="header">
       <div class="header-left">
-        <el-icon :size="24" color="#fff"><Connection /></el-icon>
-        <span class="title">OAuth2 真实使用场景演示</span>
+        <div class="logo-icon">
+          <el-icon :size="24" color="#fff"><Connection /></el-icon>
+        </div>
+        <div class="header-title">
+          <span class="title">OAuth2 真实使用场景演示</span>
+          <span class="subtitle">All in One</span>
+        </div>
       </div>
       <div class="header-right">
-        <el-button size="small" @click="goClients">Client 管理</el-button>
-        <el-button type="default" size="small" @click="handleLogout">退出</el-button>
+        <el-button size="small" class="client-btn" @click="goClients">Client 管理</el-button>
+        <el-button type="default" size="small" class="logout-btn" @click="handleLogout">退出</el-button>
       </div>
     </el-header>
 
-    <el-main>
+    <el-main class="layout-main">
       <el-container class="content-shell">
-        <el-aside class="side-nav">
-          <div class="side-nav-title">功能导航</div>
+        <el-aside class="side-nav" width="320px">
+          <div class="side-nav-header">
+            <div class="side-nav-title">功能导航</div>
+            <div class="side-nav-subtitle">快速访问</div>
+          </div>
           <el-menu class="side-menu" :default-active="activeTab" @select="handleNavSelect">
             <el-menu-item v-for="item in flowNavItems" :key="item.key" :index="item.key">
               {{ item.label }}
@@ -31,12 +39,14 @@
             <el-descriptions-item label="特点">无 client_secret，前端生成 PKCE，跳转授权页，换取 access_token / refresh_token</el-descriptions-item>
           </el-descriptions>
 
-          <div class="actions-row">
-            <el-button type="primary" @click="startPkceFlow">发起授权登录</el-button>
-            <el-button type="warning" plain @click="startScopeConsentDemo">演示 Scope 缩减授权</el-button>
-            <el-button @click="loadDiscovery">查看 Discovery 文档</el-button>
-            <el-button @click="loadJwks">查看 JWK Set</el-button>
-          </div>
+          <el-card shadow="never" class="info-card">
+            <div class="actions-row">
+              <el-button type="primary" @click="startPkceFlow">发起授权登录</el-button>
+              <el-button type="warning" plain @click="startScopeConsentDemo">演示 Scope 缩减授权</el-button>
+              <el-button @click="loadDiscovery">查看 Discovery 文档</el-button>
+              <el-button @click="loadJwks">查看 JWK Set</el-button>
+            </div>
+          </el-card>
 
           <TokenDisplay
             :access-token="accessToken"
@@ -48,17 +58,18 @@
             :show-expiry="true"
             title="当前 Token"
           />
-
-          <div class="actions-row mt16">
-            <el-button @click="callPublic">访问公开资源</el-button>
-            <el-button type="success" @click="callProfile" :disabled="!accessToken">读取用户 Profile</el-button>
-            <el-button type="success" @click="callUserInfo" :disabled="!accessToken">调用 UserInfo</el-button>
-            <el-button type="warning" @click="callRead" :disabled="!accessToken">读取业务资源</el-button>
-            <el-button type="danger" @click="callWrite" :disabled="!accessToken">写入业务资源</el-button>
-            <el-button @click="callTokenInfo" :disabled="!accessToken">查看 Token Claims</el-button>
-            <el-button type="primary" plain @click="doRefreshToken" :disabled="!refreshToken">刷新 Access Token</el-button>
-            <el-button type="info" plain @click="startOidcLogout" :disabled="!idToken">OIDC Logout</el-button>
-          </div>
+          <el-card shadow="never" class="info-card">
+            <div class="actions-row mt16">
+              <el-button @click="callPublic">访问公开资源</el-button>
+              <el-button type="success" @click="callProfile" :disabled="!accessToken">读取用户 Profile</el-button>
+              <el-button type="success" @click="callUserInfo" :disabled="!accessToken">调用 UserInfo</el-button>
+              <el-button type="warning" @click="callRead" :disabled="!accessToken">读取业务资源</el-button>
+              <el-button type="danger" @click="callWrite" :disabled="!accessToken">写入业务资源</el-button>
+              <el-button @click="callTokenInfo" :disabled="!accessToken">查看 Token Claims</el-button>
+              <el-button type="primary" plain @click="doRefreshToken" :disabled="!refreshToken">刷新 Access Token</el-button>
+              <el-button type="info" plain @click="startOidcLogout" :disabled="!idToken">OIDC Logout</el-button>
+            </div>
+          </el-card>
         </el-tab-pane>
 
         <el-tab-pane label="2. Client Credentials" name="m2m">
@@ -69,43 +80,45 @@
             <el-descriptions-item label="生命周期">支持演示 introspection 与 revocation，观察 token 激活状态变化</el-descriptions-item>
           </el-descriptions>
 
-          <el-form :model="m2mForm" inline class="mt16">
-            <el-form-item label="选择客户端">
-              <el-select v-model="m2mForm.selectedClientKey" style="width: 260px" @change="handleM2mClientChange">
-                <el-option
-                  v-for="client in m2mClients"
-                  :key="client.key"
-                  :label="client.label"
-                  :value="client.key"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="client_id">
-              <el-input v-model="m2mForm.clientId" style="width: 220px" />
-            </el-form-item>
-            <el-form-item label="client_secret">
-              <el-input v-model="m2mForm.clientSecret" show-password style="width: 220px" />
-            </el-form-item>
-            <el-form-item label="scope">
-              <el-input v-model="m2mForm.scope" style="width: 220px" />
-            </el-form-item>
-          </el-form>
+          <el-card shadow="never" class="info-card">
+            <el-form :model="m2mForm" inline class="mt16">
+              <el-form-item label="选择客户端">
+                <el-select v-model="m2mForm.selectedClientKey" style="width: 260px" @change="handleM2mClientChange">
+                  <el-option
+                      v-for="client in m2mClients"
+                      :key="client.key"
+                      :label="client.label"
+                      :value="client.key"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="client_id">
+                <el-input v-model="m2mForm.clientId" style="width: 220px"/>
+              </el-form-item>
+              <el-form-item label="client_secret">
+                <el-input v-model="m2mForm.clientSecret" show-password style="width: 220px"/>
+              </el-form-item>
+              <el-form-item label="scope">
+                <el-input v-model="m2mForm.scope" style="width: 220px"/>
+              </el-form-item>
+            </el-form>
 
-          <el-alert
-            class="mt16"
-            type="info"
-            show-icon
-            :closable="false"
-            :title="m2mSelectedClient.description"
-          />
+            <el-alert
+                class="mt16"
+                type="info"
+                show-icon
+                :closable="false"
+                :title="m2mSelectedClient.description"
+            />
 
-          <div class="actions-row">
-            <el-button type="primary" @click="getM2mToken">获取服务 Token</el-button>
-            <el-button type="success" :disabled="!m2mToken" @click="callReadWithM2m">调用只读资源</el-button>
-            <el-button type="danger" :disabled="!m2mToken" @click="callWriteWithM2m">调用写资源</el-button>
-            <el-button :disabled="!m2mLifecycleToken" @click="introspectM2mToken">Introspect Token</el-button>
-            <el-button type="warning" :disabled="!m2mToken" @click="revokeM2mToken">Revoke Token</el-button>
-          </div>
+            <div class="actions-row">
+              <el-button type="primary" @click="getM2mToken">获取服务 Token</el-button>
+              <el-button type="success" :disabled="!m2mToken" @click="callReadWithM2m">调用只读资源</el-button>
+              <el-button type="danger" :disabled="!m2mToken" @click="callWriteWithM2m">调用写资源</el-button>
+              <el-button :disabled="!m2mLifecycleToken" @click="introspectM2mToken">Introspect Token</el-button>
+              <el-button type="warning" :disabled="!m2mToken" @click="revokeM2mToken">Revoke Token</el-button>
+            </div>
+          </el-card>
 
           <el-card shadow="never" class="mt16">
             <template #header><span>M2M Token</span></template>
@@ -118,17 +131,10 @@
             <el-descriptions-item label="演示目标">对比 client_secret_basic、client_secret_post、none 三种 token endpoint 客户端认证模型</el-descriptions-item>
             <el-descriptions-item label="重点理解">机密客户端要证明“我是谁”，公开客户端则不保存 secret，而是依赖 PKCE</el-descriptions-item>
             <el-descriptions-item label="当前客户端">all-in-one-client 同时支持 basic/post；spa-public-client 代表公开客户端</el-descriptions-item>
+            <el-descriptions-item label="备注">同一个 token endpoint，机密客户端可以通过 Header 或 Body 认证；公开客户端不应持有 client_secret。</el-descriptions-item>
           </el-descriptions>
 
-          <el-alert
-            class="mt16"
-            type="info"
-            show-icon
-            :closable="false"
-            title="同一个 token endpoint，机密客户端可以通过 Header 或 Body 认证；公开客户端不应持有 client_secret。"
-          />
-
-          <el-row :gutter="16" class="mt16">
+          <el-row :gutter="16" class="mt16 aligned-row">
             <el-col :xs="24" :md="12">
               <el-card shadow="never">
                 <template #header><span>机密客户端：basic / post</span></template>
@@ -224,26 +230,28 @@
           </el-card>
         </el-tab-pane>
 
-        <el-tab-pane label="4. Authorization Code without PKCE 对比" name="no-pkce">
+        <el-tab-pane label="4. Authorization Code without PKCE" name="no-pkce">
           <el-descriptions :column="1" border>
             <el-descriptions-item label="演示目标">对比同一公开客户端在“带 PKCE / 不带 PKCE”两种请求下的行为差异</el-descriptions-item>
             <el-descriptions-item label="当前客户端">spa-public-client（公开客户端，服务端要求 PKCE）</el-descriptions-item>
             <el-descriptions-item label="预期结果">带 PKCE 能完成授权；不带 PKCE 会在授权阶段被拒绝，体现 PKCE 的安全约束</el-descriptions-item>
           </el-descriptions>
 
-          <el-alert
-            class="mt16"
-            type="warning"
-            show-icon
-            :closable="false"
-            title="PKCE 的核心价值是把授权码绑定到发起方，防止授权码被截获后由其他客户端换 token。"
-          />
+          <el-card shadow="never" class="info-card">
+            <el-alert
+                class="mt16"
+                type="warning"
+                show-icon
+                :closable="false"
+                title="PKCE 的核心价值是把授权码绑定到发起方，防止授权码被截获后由其他客户端换 token。"
+            />
 
-          <div class="actions-row">
-            <el-button type="primary" @click="startPkceControlFlow">带 PKCE 发起授权（预期成功）</el-button>
-            <el-button type="danger" plain @click="startNoPkceFlow">不带 PKCE 发起授权（预期失败）</el-button>
-            <el-button @click="writeNoPkceSummary">输出对比总结</el-button>
-          </div>
+            <div class="actions-row">
+              <el-button type="primary" @click="startPkceControlFlow">带 PKCE 发起授权（预期成功）</el-button>
+              <el-button type="danger" plain @click="startNoPkceFlow">不带 PKCE 发起授权（预期失败）</el-button>
+              <el-button @click="writeNoPkceSummary">输出对比总结</el-button>
+            </div>
+          </el-card>
 
           <el-card shadow="never" class="mt16">
             <template #header><span>对比观察点</span></template>
@@ -279,7 +287,7 @@
             <el-descriptions-item label="观察重点">expires_in 倒计时、刷新后 refresh_token 是否变化、过期后资源访问结果</el-descriptions-item>
           </el-descriptions>
 
-          <el-row :gutter="16" class="mt16">
+          <el-row :gutter="16" class="mt16 aligned-row">
             <el-col :xs="24" :md="12">
               <el-card shadow="never">
                 <template #header><span>启动对比会话</span></template>
@@ -359,7 +367,7 @@
               <el-form-item label="scope（空格分隔）">
                 <el-input v-model="dynamicClientForm.scope" placeholder="openid profile email read write" />
               </el-form-item>
-              <el-form-item label="requireAuthorizationConsent">
+              <el-form-item label="授权许可">
                 <el-switch v-model="dynamicClientForm.requireAuthorizationConsent" />
               </el-form-item>
             </el-form>
@@ -424,27 +432,30 @@
             <el-descriptions-item label="默认 Scope">profile read（当前设备流演示不申请 openid）</el-descriptions-item>
           </el-descriptions>
 
-          <el-form :model="deviceForm" inline class="mt16">
-            <el-form-item label="client_id">
-              <el-input v-model="deviceForm.clientId" style="width: 220px" />
-            </el-form-item>
-            <el-form-item label="client_secret">
-              <el-input v-model="deviceForm.clientSecret" show-password style="width: 220px" />
-            </el-form-item>
-            <el-form-item label="scope">
-              <el-input v-model="deviceForm.scope" style="width: 220px" />
-            </el-form-item>
-          </el-form>
+          <el-card shadow="never" class="info-card">
+            <el-form :model="deviceForm" inline class="mt16">
+              <el-form-item label="client_id">
+                <el-input v-model="deviceForm.clientId" style="width: 220px"/>
+              </el-form-item>
+              <el-form-item label="client_secret">
+                <el-input v-model="deviceForm.clientSecret" show-password style="width: 220px"/>
+              </el-form-item>
+              <el-form-item label="scope">
+                <el-input v-model="deviceForm.scope" style="width: 220px"/>
+              </el-form-item>
+            </el-form>
 
-          <div class="actions-row">
-            <el-button type="primary" @click="startDeviceFlow">申请 Device Code</el-button>
-            <el-button
-              type="success"
-              :disabled="!deviceAuth.device_code || isPollingDeviceToken"
-              :loading="isPollingDeviceToken"
-              @click="pollDeviceToken"
-            >{{ isPollingDeviceToken ? '轮询中...' : '轮询 Token' }}</el-button>
-          </div>
+            <div class="actions-row">
+              <el-button type="primary" @click="startDeviceFlow">申请 Device Code</el-button>
+              <el-button
+                  type="success"
+                  :disabled="!deviceAuth.device_code || isPollingDeviceToken"
+                  :loading="isPollingDeviceToken"
+                  @click="pollDeviceToken"
+              >{{ isPollingDeviceToken ? '轮询中...' : '轮询 Token' }}
+              </el-button>
+            </div>
+          </el-card>
 
           <el-card shadow="never" class="mt16">
             <template #header><span>Device 授权信息</span></template>
@@ -465,19 +476,21 @@
             <el-descriptions-item label="当前方式">本页可直接生成对比所需 token，无需依赖其他 demo 先完成登录或取 token</el-descriptions-item>
           </el-descriptions>
 
-          <el-alert
-            class="mt16"
-            type="info"
-            show-icon
-            :closable="false"
-            title="id_token 更偏身份声明，access_token 更偏资源访问授权；client_credentials token 通常没有用户身份字段。"
-          />
+          <el-card shadow="never" class="info-card">
+            <el-alert
+                class="mt16"
+                type="info"
+                show-icon
+                :closable="false"
+                title="id_token 更偏身份声明，access_token 更偏资源访问授权；client_credentials token 通常没有用户身份字段。"
+            />
 
-          <div class="actions-row">
-            <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
-            <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
-            <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
-          </div>
+            <div class="actions-row">
+              <el-button type="primary" @click="startClaimsUserLogin">获取用户 Token</el-button>
+              <el-button type="success" @click="getClaimsMachineToken">获取机器 Token</el-button>
+              <el-button @click="writeClaimsComparisonResult" :disabled="!hasAnyJwtForComparison">输出当前 Claims 差异总结</el-button>
+            </div>
+          </el-card>
 
           <el-row :gutter="16" class="mt16">
             <el-col :xs="24" :md="8">
@@ -657,7 +670,7 @@ const flowNavItems = [
   { key: 'pkce', label: '1. Authorization Code + PKCE' },
   { key: 'm2m', label: '2. Client Credentials' },
   { key: 'client-auth', label: '3. Client 认证方式差异' },
-  { key: 'no-pkce', label: '4. Authorization Code without PKCE 对比' },
+  { key: 'no-pkce', label: '4. Authorization Code without PKCE' },
   { key: 'token-lifecycle', label: '5. Access Token 过期与 Refresh Token 轮换' },
   { key: 'dynamic-client', label: '6. Dynamic Client Registration' },
   { key: 'par', label: '7. Pushed Authorization Request（PAR）' },
@@ -1985,38 +1998,96 @@ function getDevicePollingIntervalMs(intervalSeconds) {
 
 <style scoped>
 .layout {
-  min-height: 98.5vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #f5f7fa;
 }
+
+.layout-main {
+  padding: 8px;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
 .content-shell {
-  min-height: calc(100vh - 140px);
+  height: 100%;
+  min-height: 0;
   gap: 16px;
+  overflow: hidden;
 }
 .side-nav {
   width: 320px;
+  height: 100%;
   max-width: 100%;
   background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+.side-nav-header {
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
 }
 .side-nav-title {
-  padding: 18px 20px 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
-  border-bottom: 1px solid #ebeef5;
+  font-size: 13px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 2px;
+}
+.side-nav-subtitle {
+  font-size: 10px;
+  color: #909399;
 }
 .side-menu {
   border-right: none;
+  flex: 1;
+  overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
+  padding: 4px;
+}
+.side-menu :deep(.el-menu-item) {
+  border-radius: 6px;
+  margin: 1px 0;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+.side-menu :deep(.el-menu-item:hover) {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateX(2px);
+}
+.side-menu :deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
 }
 .side-menu::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+}
+.side-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
 }
 .content-main {
   padding: 0;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.content-main::-webkit-scrollbar {
+  width: 4px;
+}
+
+.content-main::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
 }
 .content-tabs :deep(.el-tabs__header) {
   display: none;
@@ -2025,25 +2096,93 @@ function getDevicePollingIntervalMs(intervalSeconds) {
   padding: 0;
 }
 .header {
-  background: #409eff;
+  height: 52px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 14px;
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.3);
+  position: relative;
+  z-index: 10;
 }
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
 .header-left {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-title {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .header-right {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
+
 .title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fff;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+  margin-left: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle::before {
+  content: '|';
+  margin-right: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.client-btn,
+.logout-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.3s ease;
+}
+
+.client-btn:hover,
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
 }
 .mb16 {
   margin-bottom: 16px;
@@ -2056,6 +2195,16 @@ function getDevicePollingIntervalMs(intervalSeconds) {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Keep two-column demo cards aligned with full-width sections on the left edge. */
+.aligned-row {
+  margin-left: 0 !important;
+  margin-right: -8px !important;
+}
+
+.aligned-row > .el-col:first-child {
+  padding-left: 0 !important;
 }
 .token-box,
 .result-box {
@@ -2070,13 +2219,35 @@ function getDevicePollingIntervalMs(intervalSeconds) {
   padding: 60px 0;
 }
 @media (max-width: 960px) {
+  .layout-main {
+    height: auto;
+    overflow: visible;
+  }
+
   .content-shell {
     display: block;
     min-height: auto;
+    height: auto;
+    overflow: visible;
   }
   .side-nav {
     width: 100%;
+    height: auto;
     margin-bottom: 16px;
+  }
+
+  .content-main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .header {
+    padding: 0 16px;
+    height: 56px;
+  }
+
+  .header-title {
+    display: none;
   }
 }
 </style>

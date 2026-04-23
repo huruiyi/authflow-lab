@@ -36,7 +36,7 @@ const routes = [
   { path: '/device', component: DeviceFlowView, meta: { requiresAuth: true, title: 'Device Code Flow' } },
   { path: '/claims', component: JwtClaimsView, meta: { requiresAuth: true, title: 'JWT Claims 差异' } },
   { path: '/scenarios', component: ScenariosView, meta: { requiresAuth: true, title: '场景说明' } },
-  { path: '/flows-demo', component: FlowsDemo, meta: { requiresAuth: true, title: 'Flows Demo' } },
+  { path: '/flows-demo', component: FlowsDemo, meta: { requiresAuth: true, title: 'All in One' } },
 
   // 管理页面
   { path: '/clients', component: ClientManagement, meta: { requiresAuth: true, title: 'Client 管理' } },

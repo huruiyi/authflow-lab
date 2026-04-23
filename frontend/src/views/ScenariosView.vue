@@ -113,7 +113,7 @@ import OAuth2Layout from '../components/OAuth2Layout.vue'
 
 <style scoped>
 .scenarios-container {
-  padding: 6px 4px;
+  padding: 12px 0;
   overflow-x: hidden;
 }
 
@@ -213,6 +213,10 @@ import OAuth2Layout from '../components/OAuth2Layout.vue'
 
 :deep(.el-timeline-item__timestamp) {
   font-size: 12px;
+}
+
+::v-deep(.el-timeline.is-start) {
+  padding-left: 0;
 }
 
 :deep(.compact-timeline) {

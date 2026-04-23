@@ -10,30 +10,35 @@
         </el-descriptions>
       </el-card>
 
-      <el-form :model="deviceForm" inline class="form-row">
-        <el-form-item label="client_id">
-          <el-input v-model="deviceForm.clientId" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="client_secret">
-          <el-input v-model="deviceForm.clientSecret" show-password style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="scope">
-          <el-input v-model="deviceForm.scope" style="width: 220px" />
-        </el-form-item>
-      </el-form>
+      <el-card shadow="never" class="info-card">
+        <el-form :model="deviceForm" inline class="form-row">
+          <el-form-item label="client_id">
+            <el-input v-model="deviceForm.clientId" style="width: 220px"/>
+          </el-form-item>
+          <el-form-item label="client_secret">
+            <el-input v-model="deviceForm.clientSecret" show-password style="width: 220px"/>
+          </el-form-item>
+          <el-form-item label="scope">
+            <el-input v-model="deviceForm.scope" style="width: 220px"/>
+          </el-form-item>
+        </el-form>
 
-      <div class="actions-row">
-        <el-button type="primary" :icon="Key" @click="startDeviceFlow">申请 Device Code</el-button>
-        <el-button
-          type="success"
-          :disabled="!deviceAuth.device_code || isPollingDeviceToken"
-          :loading="isPollingDeviceToken"
-          @click="pollDeviceToken"
-        >{{ isPollingDeviceToken ? '轮询中...' : '轮询 Token' }}</el-button>
-      </div>
+        <div class="actions-row">
+          <el-button type="primary" :icon="Key" @click="startDeviceFlow">申请 Device Code</el-button>
+          <el-button
+              type="success"
+              :disabled="!deviceAuth.device_code || isPollingDeviceToken"
+              :loading="isPollingDeviceToken"
+              @click="pollDeviceToken"
+          >{{ isPollingDeviceToken ? '轮询中...' : '轮询 Token' }}
+          </el-button>
+        </div>
+      </el-card>
 
       <el-card shadow="never">
-        <template #header><span>Device 授权信息</span></template>
+        <template #header>
+          <span>Device 授权信息</span>
+        </template>
         <el-descriptions :column="1" border>
           <el-descriptions-item label="device_code">
             <div class="token-box">{{ deviceAuth.device_code || '暂无' }}</div>
@@ -58,29 +63,29 @@
       </el-card>
 
       <TokenDisplay
-        :access-token="tokenState.accessToken"
-        :refresh-token="tokenState.refreshToken"
-        :scope="tokenState.scope"
-        title="获取的 Token"
+          :access-token="tokenState.accessToken"
+          :refresh-token="tokenState.refreshToken"
+          :scope="tokenState.scope"
+          title="获取的 Token"
       />
 
-      <ApiResultBox :result="result" />
+      <ApiResultBox :result="result"/>
     </div>
   </OAuth2Layout>
 </template>
 
 <script setup>
-import { ref, reactive, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+import {onBeforeUnmount, reactive, ref} from 'vue'
+import {ElMessage} from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import TokenDisplay from '../components/TokenDisplay.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
-import { oauth2Api } from '../api/oauth2'
-import { handleOAuth2Error, generateBasicAuth, delay } from '../utils/oauth2Helper'
-import { decorateDeviceAuth, isDeviceFlowExpired } from '../utils/deviceFlowHelper'
-import { saveTokens, getTokenState } from '../utils/tokenHelper'
+import {oauth2Api} from '../api/oauth2'
+import {delay, generateBasicAuth, handleOAuth2Error} from '../utils/oauth2Helper'
+import {decorateDeviceAuth, isDeviceFlowExpired} from '../utils/deviceFlowHelper'
+import {getTokenState, saveTokens} from '../utils/tokenHelper'
 
-const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
+const result = ref({message: '点击上方按钮开始体验 OAuth2 场景。'})
 const tokenState = reactive(getTokenState())
 const deviceAuth = ref({})
 const isPollingDeviceToken = ref(false)
@@ -104,7 +109,7 @@ async function startDeviceFlow() {
     isPollingDeviceToken.value = false
     const basic = generateBasicAuth(deviceForm.clientId, deviceForm.clientSecret)
     sessionStorage.setItem('oauth2_device_return_to', '/device')
-    const { data } = await oauth2Api.deviceAuthorize({
+    const {data} = await oauth2Api.deviceAuthorize({
       client_id: deviceForm.clientId,
       scope: deviceForm.scope
     }, {
@@ -130,7 +135,7 @@ async function pollDeviceToken() {
     while (!devicePollingAborted) {
       const basic = generateBasicAuth(deviceForm.clientId, deviceForm.clientSecret)
       try {
-        const { data } = await oauth2Api.pollDeviceToken({
+        const {data} = await oauth2Api.pollDeviceToken({
           grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
           device_code: deviceAuth.value.device_code,
           client_id: deviceForm.clientId

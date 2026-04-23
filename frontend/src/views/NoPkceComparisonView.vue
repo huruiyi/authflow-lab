@@ -9,18 +9,19 @@
         </el-descriptions>
       </el-card>
 
-      <el-alert
-        type="warning"
-        show-icon
-        :closable="false"
-        title="PKCE 的核心价值是把授权码绑定到发起方，防止授权码被截获后由其他客户端换 token。"
-      />
-
-      <div class="actions-row">
-        <el-button type="primary" :icon="Shield" @click="startPkceControlFlow">带 PKCE 发起授权（预期成功）</el-button>
-        <el-button type="danger" plain :icon="Unlock" @click="startNoPkceFlow">不带 PKCE 发起授权（预期失败）</el-button>
-        <el-button :icon="Document" @click="writeNoPkceSummary">输出对比总结</el-button>
-      </div>
+      <el-card shadow="never" class="info-card">
+        <el-alert
+            type="warning"
+            show-icon
+            :closable="false"
+            title="PKCE 的核心价值是把授权码绑定到发起方，防止授权码被截获后由其他客户端换 token。"
+        />
+        <div class="actions-row">
+          <el-button type="primary" :icon="Shield" @click="startPkceControlFlow">带 PKCE 发起授权（预期成功）</el-button>
+          <el-button type="danger" plain :icon="Unlock" @click="startNoPkceFlow">不带 PKCE 发起授权（预期失败）</el-button>
+          <el-button :icon="Document" @click="writeNoPkceSummary">输出对比总结</el-button>
+        </div>
+      </el-card>
 
       <el-card shadow="never">
         <template #header><span>对比观察点</span></template>

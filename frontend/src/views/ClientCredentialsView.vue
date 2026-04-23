@@ -10,42 +10,44 @@
         </el-descriptions>
       </el-card>
 
-      <el-form :model="m2mForm" inline class="form-row">
-        <el-form-item label="选择客户端">
-          <el-select v-model="m2mForm.selectedClientKey" style="width: 260px" @change="handleM2mClientChange">
-            <el-option
-              v-for="client in m2mClients"
-              :key="client.key"
-              :label="client.label"
-              :value="client.key"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="client_id">
-          <el-input v-model="m2mForm.clientId" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="client_secret">
-          <el-input v-model="m2mForm.clientSecret" show-password style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="scope">
-          <el-input v-model="m2mForm.scope" style="width: 220px" />
-        </el-form-item>
-      </el-form>
+      <el-card shadow="never" class="info-card">
+        <el-form :model="m2mForm" inline class="form-row">
+          <el-form-item label="选择客户端">
+            <el-select v-model="m2mForm.selectedClientKey" style="width: 260px" @change="handleM2mClientChange">
+              <el-option
+                  v-for="client in m2mClients"
+                  :key="client.key"
+                  :label="client.label"
+                  :value="client.key"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="client_id">
+            <el-input v-model="m2mForm.clientId" style="width: 220px"/>
+          </el-form-item>
+          <el-form-item label="client_secret">
+            <el-input v-model="m2mForm.clientSecret" show-password style="width: 220px"/>
+          </el-form-item>
+          <el-form-item label="scope">
+            <el-input v-model="m2mForm.scope" style="width: 220px"/>
+          </el-form-item>
+        </el-form>
 
-      <el-alert
-        type="info"
-        show-icon
-        :closable="false"
-        :title="m2mSelectedClient.description"
-      />
+        <el-alert
+            type="info"
+            show-icon
+            :closable="false"
+            :title="m2mSelectedClient.description"
+        />
 
-      <div class="actions-row">
-        <el-button type="primary" :icon="Key" @click="getM2mToken">获取服务 Token</el-button>
-        <el-button type="success" :disabled="!m2mToken" @click="callReadWithM2m">调用只读资源</el-button>
-        <el-button type="danger" :disabled="!m2mToken" @click="callWriteWithM2m">调用写资源</el-button>
-        <el-button :disabled="!m2mLifecycleToken" @click="introspectM2mToken">Introspect Token</el-button>
-        <el-button type="warning" :disabled="!m2mToken" @click="revokeM2mToken">Revoke Token</el-button>
-      </div>
+        <div class="actions-row">
+          <el-button type="primary" :icon="Key" @click="getM2mToken">获取服务 Token</el-button>
+          <el-button type="success" :disabled="!m2mToken" @click="callReadWithM2m">调用只读资源</el-button>
+          <el-button type="danger" :disabled="!m2mToken" @click="callWriteWithM2m">调用写资源</el-button>
+          <el-button :disabled="!m2mLifecycleToken" @click="introspectM2mToken">Introspect Token</el-button>
+          <el-button type="warning" :disabled="!m2mToken" @click="revokeM2mToken">Revoke Token</el-button>
+        </div>
+      </el-card>
 
       <el-card shadow="never" class="token-card">
         <template #header><span>M2M Token</span></template>
