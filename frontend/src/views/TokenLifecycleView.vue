@@ -4,13 +4,13 @@
       <el-card shadow="never" class="info-card">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="演示目标">观察 access_token 短过期后的刷新行为，并对比 refresh_token 是否轮换</el-descriptions-item>
-          <el-descriptions-item label="对比客户端">spa-public-client（默认复用 refresh_token） vs spa-rotation-client（每次刷新轮换）</el-descriptions-item>
+          <el-descriptions-item label="对比客户端">lifecycle-default-client（默认复用 refresh_token） vs lifecycle-rotation-client（每次刷新轮换）</el-descriptions-item>
           <el-descriptions-item label="观察重点">expires_in 倒计时、刷新后 refresh_token 是否变化、过期后资源访问结果</el-descriptions-item>
         </el-descriptions>
       </el-card>
 
       <el-row :gutter="12" class="cards-row">
-        <el-col :xs="24" :md="12">
+        <el-col :xs="24" :md="24">
           <el-card shadow="never">
             <template #header><span>启动对比会话</span></template>
             <div class="actions-row">
@@ -27,28 +27,30 @@
             />
           </el-card>
         </el-col>
-
-        <el-col :xs="24" :md="12">
-          <el-card shadow="never">
-            <template #header><span>当前状态</span></template>
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="当前 client_id">{{ tokenLifecycleState.clientId || '未指定' }}</el-descriptions-item>
-              <el-descriptions-item label="access_token 剩余秒数">{{ tokenLifecycleRemainingSecondsDisplay }}</el-descriptions-item>
-              <el-descriptions-item label="刷新次数">{{ tokenLifecycleState.refreshCount }}</el-descriptions-item>
-              <el-descriptions-item label="最近一次刷新结果">{{ tokenLifecycleState.lastRefreshOutcome || '暂无' }}</el-descriptions-item>
-            </el-descriptions>
-          </el-card>
-        </el-col>
       </el-row>
 
-      <TokenDisplay
-        :access-token="tokenState.accessToken"
-        :refresh-token="tokenState.refreshToken"
-        :id-token="tokenState.idToken"
-        :scope="tokenState.scope"
-        :show-expiry="true"
-        title="Token 明细"
-      />
+      <el-card shadow="never">
+        <template #header><span>当前状态与 Token 明细</span></template>
+        <el-descriptions :column="1" border class="token-lifecycle-descriptions">
+          <el-descriptions-item label="当前 client_id">{{ tokenLifecycleState.clientId || '未指定' }}</el-descriptions-item>
+          <el-descriptions-item label="access_token 剩余秒数">{{ tokenLifecycleRemainingSecondsDisplay }}</el-descriptions-item>
+          <el-descriptions-item label="刷新次数">{{ tokenLifecycleState.refreshCount }}</el-descriptions-item>
+          <el-descriptions-item label="最近一次刷新结果">{{ tokenLifecycleState.lastRefreshOutcome || '暂无' }}</el-descriptions-item>
+          <el-descriptions-item label="上一次 refresh_token">
+            <div class="token-box">{{ tokenLifecycleState.previousRefreshToken || '暂无' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="access_token">
+            <div class="token-box">{{ tokenState.accessToken || '暂无' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="refresh_token">
+            <div class="token-box">{{ tokenState.refreshToken || '暂无' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="id_token">
+            <div class="token-box">{{ tokenState.idToken || '暂无' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="scope">{{ tokenState.scope || '暂无' }}</el-descriptions-item>
+        </el-descriptions>
+      </el-card>
 
       <div class="actions-row">
         <el-button type="success" :disabled="!tokenState.refreshToken" @click="refreshForLifecycleDemo">执行 Refresh Token</el-button>
@@ -66,17 +68,29 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
-import TokenDisplay from '../components/TokenDisplay.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { startAuthorizationCodeFlow, handleOAuth2Error } from '../utils/oauth2Helper'
+import { startAuthorizationCodeFlow, handleOAuth2Error, createOAuth2SyncListener } from '../utils/oauth2Helper'
 import { saveTokens, getTokenRemainingSeconds, getTokenState } from '../utils/tokenHelper'
+
+const tokenLifecycleSyncChannel = 'oauth2-token-sync-token-lifecycle'
+let disposeTokenSync = null
+const tokenLifecycleClients = {
+  default: {
+    clientId: 'lifecycle-default-client',
+    clientSecret: 'lifecycle-default-secret'
+  },
+  rotation: {
+    clientId: 'lifecycle-rotation-client',
+    clientSecret: 'lifecycle-rotation-secret'
+  }
+}
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const tokenState = reactive(getTokenState())
 
 const tokenLifecycleState = reactive({
-  clientId: sessionStorage.getItem('oauth2_client_id') || 'spa-public-client',
+  clientId: sessionStorage.getItem('oauth2_client_id') || tokenLifecycleClients.default.clientId,
   refreshCount: 0,
   previousRefreshToken: '',
   lastRefreshOutcome: '',
@@ -98,6 +112,7 @@ const tokenLifecycleRemainingSecondsDisplay = computed(() => {
 })
 
 onMounted(() => {
+  disposeTokenSync = createOAuth2SyncListener(tokenLifecycleSyncChannel, applySyncedTokens)
   lifecycleTimer = window.setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 1000)
@@ -105,18 +120,34 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  disposeTokenSync?.()
   if (lifecycleTimer) {
     window.clearInterval(lifecycleTimer)
     lifecycleTimer = null
   }
 })
 
+function applySyncedTokens(payload) {
+  saveTokens(payload)
+  loadTokenLifecycleFromCurrentSession()
+  result.value = {
+    operation: 'oauth2_callback_sync',
+    message: '已同步新窗口授权结果。',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    refresh_token: payload.refresh_token ? '已返回' : '无'
+  }
+  ElMessage.success('Token 信息已同步到当前页')
+}
+
 async function startTokenLifecycleLogin(mode) {
   const useRotationPolicy = mode === 'rotation'
-  const clientId = useRotationPolicy ? 'spa-rotation-client' : 'spa-public-client'
+  const selectedClient = useRotationPolicy ? tokenLifecycleClients.rotation : tokenLifecycleClients.default
+  const clientId = selectedClient.clientId
+  const clientSecret = selectedClient.clientSecret
   const policyHint = useRotationPolicy
-    ? '当前使用 spa-rotation-client：access_token 默认 30 秒过期，refresh_token 每次刷新后应轮换。'
-    : '当前使用 spa-public-client：refresh_token 默认可复用，刷新后通常保持不变。'
+    ? '当前使用 lifecycle-rotation-client：access_token 默认 30 秒过期，refresh_token 每次刷新后应轮换。'
+    : '当前使用 lifecycle-default-client：refresh_token 默认可复用，刷新后通常保持不变。'
 
   tokenLifecycleState.clientId = clientId
   tokenLifecycleState.refreshCount = 0
@@ -134,19 +165,21 @@ async function startTokenLifecycleLogin(mode) {
 
   await startAuthorizationCodeFlow({
     clientId,
+    clientSecret,
     scope: 'openid profile email read write',
     usePkce: true,
     scenario: useRotationPolicy ? 'token-lifecycle-rotation' : 'token-lifecycle-default',
     returnTo: '/token-lifecycle',
+    syncChannel: tokenLifecycleSyncChannel,
     openInNewWindow: true
   })
 }
 
 function loadTokenLifecycleFromCurrentSession() {
   Object.assign(tokenState, getTokenState())
-  const currentClientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
+  const currentClientId = sessionStorage.getItem('oauth2_client_id') || tokenLifecycleClients.default.clientId
   tokenLifecycleState.clientId = currentClientId
-  tokenLifecycleState.policyHint = currentClientId === 'spa-rotation-client'
+  tokenLifecycleState.policyHint = currentClientId === tokenLifecycleClients.rotation.clientId
     ? '当前会话是轮换策略客户端，刷新后 refresh_token 应变化。'
     : '当前会话是默认策略客户端，refresh_token 可能保持不变。'
 }
@@ -159,14 +192,19 @@ async function refreshForLifecycleDemo() {
 }
 
 async function doRefreshToken() {
-  const clientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
+  const clientId = sessionStorage.getItem('oauth2_client_id') || tokenLifecycleClients.default.clientId
+  const clientSecret = sessionStorage.getItem('oauth2_active_client_secret') || sessionStorage.getItem('oauth2_client_secret') || ''
   try {
     const previousRefreshToken = tokenState.refreshToken
-    const { data } = await oauth2Api.refreshToken({
+    const payload = {
       grant_type: 'refresh_token',
       client_id: clientId,
       refresh_token: tokenState.refreshToken
-    })
+    }
+    if (clientSecret) {
+      payload.client_secret = clientSecret
+    }
+    const { data } = await oauth2Api.refreshToken(payload)
     saveTokens(data)
     Object.assign(tokenState, getTokenState())
     result.value = data
@@ -193,12 +231,24 @@ function simulateAccessTokenExpired() {
 }
 
 async function verifyLifecycleReadResource() {
+  const remainingSeconds = getTokenRemainingSeconds()
+  if (remainingSeconds !== null && remainingSeconds < 0) {
+    result.value = {
+      operation: 'token_lifecycle_verify_read',
+      status: 'blocked_by_local_expiry',
+      remainingSeconds,
+      message: '当前 access_token 在本地演示状态下已过期，已阻止发起读取请求。请先执行 Refresh Token。'
+    }
+    ElMessage.warning('本地判定 access_token 已过期，请先刷新')
+    return
+  }
+
   try {
     const { data } = await oauth2Api.callReadResource(tokenState.accessToken)
     result.value = {
       operation: 'token_lifecycle_verify_read',
       status: 'success',
-      remainingSeconds: getTokenRemainingSeconds(),
+      remainingSeconds,
       response: data
     }
     ElMessage.success('当前 access_token 仍可访问资源')
@@ -254,6 +304,30 @@ function writeTokenLifecycleSummary() {
   gap: 8px;
   margin: 12px 0;
   flex-wrap: wrap;
+}
+
+.token-box {
+  word-break: break-all;
+  white-space: pre-wrap;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #606266;
+  background: #f5f7fa;
+  padding: 8px;
+  border-radius: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.token-lifecycle-descriptions :deep(.el-descriptions__table) {
+  table-layout: fixed;
+}
+
+.token-lifecycle-descriptions :deep(.el-descriptions__label) {
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
+  white-space: nowrap !important;
 }
 
 @media (max-width: 768px) {

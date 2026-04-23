@@ -3,7 +3,6 @@ package com.demo.authserver.config;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,17 +32,14 @@ public class DataInitializer implements ApplicationRunner {
   private final JdbcUserDetailsManager userDetailsManager;
   private final PasswordEncoder passwordEncoder;
   private final RegisteredClientRepository registeredClientRepository;
-  private final JdbcTemplate jdbcTemplate;
 
   public DataInitializer(
       JdbcUserDetailsManager userDetailsManager,
       PasswordEncoder passwordEncoder,
-      RegisteredClientRepository registeredClientRepository,
-      JdbcTemplate jdbcTemplate) {
+      RegisteredClientRepository registeredClientRepository) {
     this.userDetailsManager = userDetailsManager;
     this.passwordEncoder = passwordEncoder;
     this.registeredClientRepository = registeredClientRepository;
-    this.jdbcTemplate = jdbcTemplate;
   }
 
   @Override
@@ -63,6 +59,9 @@ public class DataInitializer implements ApplicationRunner {
     }
   }
 
+  /**
+   *spa-par-client 客户端以data.sql中的为主，DataInitializer中不做兜底新增
+   */
   private void ensureRepositoryRegisteredClients() {
     ensureWebappClientExists();
     ensureSpaPublicClientExists();
@@ -73,9 +72,9 @@ public class DataInitializer implements ApplicationRunner {
     ensurePostAuthClientExists();
     ensureDeviceFlowClientExists();
     ensureAllInOneClientExists();
-    ensureBackchannelLogoutClientUpToDate();
-    ensureOpaqueClientUpToDate();
-    ensureJwtAuthClientUpToDate();
+    ensureBackchannelLogoutClientExists();
+    ensureOpaqueClientExists();
+    ensureJwtAuthClientExists();
   }
 
   private void ensureWebappClientExists() {
@@ -132,71 +131,22 @@ public class DataInitializer implements ApplicationRunner {
     }
   }
 
-  private void ensureBackchannelLogoutClientUpToDate() {
-    RegisteredClient existing = registeredClientRepository.findByClientId("spa-backchannel-logout-client");
-    if (existing == null) {
+  private void ensureBackchannelLogoutClientExists() {
+    if (registeredClientRepository.findByClientId("spa-backchannel-logout-client") == null) {
       registeredClientRepository.save(backchannelLogoutClient());
-      return;
     }
-
-    boolean publicClient = existing.getClientAuthenticationMethods().stream()
-        .map(ClientAuthenticationMethod::getValue)
-        .anyMatch(ClientAuthenticationMethod.NONE.getValue()::equals);
-    boolean proofKeyRequired = existing.getClientSettings().isRequireProofKey();
-    boolean noSecret = existing.getClientSecret() == null;
-
-    if (publicClient && proofKeyRequired && noSecret) {
-      return;
-    }
-
-    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
-    registeredClientRepository.save(backchannelLogoutClient());
   }
 
-  private void ensureOpaqueClientUpToDate() {
-    RegisteredClient existing = registeredClientRepository.findByClientId("spa-opaque-client");
-    if (existing == null) {
+  private void ensureOpaqueClientExists() {
+    if (registeredClientRepository.findByClientId("spa-opaque-client") == null) {
       registeredClientRepository.save(opaqueClient());
-      return;
     }
-
-    String accessTokenFormat = existing.getTokenSettings().getAccessTokenFormat().getValue();
-    if (OAuth2TokenFormat.REFERENCE.getValue().equals(accessTokenFormat)) {
-      return;
-    }
-
-    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
-    registeredClientRepository.save(opaqueClient());
   }
 
-  private void ensureJwtAuthClientUpToDate() {
-    RegisteredClient existing = registeredClientRepository.findByClientId("jwt-auth-client");
-    if (existing == null) {
+  private void ensureJwtAuthClientExists() {
+    if (registeredClientRepository.findByClientId("jwt-auth-client") == null) {
       registeredClientRepository.save(jwtAuthClient());
-      return;
     }
-
-    boolean usesJwtClientAuth = existing.getClientAuthenticationMethods().stream()
-        .map(ClientAuthenticationMethod::getValue)
-        .anyMatch("client_secret_jwt"::equals);
-    String signingAlgorithm = existing.getClientSettings().getTokenEndpointAuthenticationSigningAlgorithm() != null
-        ? existing.getClientSettings().getTokenEndpointAuthenticationSigningAlgorithm().getName()
-        : null;
-
-    boolean secretMatches = JWT_AUTH_CLIENT_SECRET.equals(existing.getClientSecret());
-
-    if (usesJwtClientAuth && MacAlgorithm.HS256.getName().equals(signingAlgorithm) && secretMatches) {
-      return;
-    }
-
-    jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existing.getId());
-    jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existing.getId());
-    registeredClientRepository.save(jwtAuthClient());
   }
 
   private RegisteredClient webappClient() {

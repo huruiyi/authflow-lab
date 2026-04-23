@@ -14,13 +14,13 @@ app:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:13306/ssdemo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/ssdemo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: Hu1992825!Xyz!
+    password: fairy-vip
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
-       # mode: never
+      # mode: never
       mode: always
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql

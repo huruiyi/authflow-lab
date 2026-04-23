@@ -89,6 +89,7 @@ onMounted(async () => {
   const savedState = sessionStorage.getItem('oauth2_state')
   const codeVerifier = sessionStorage.getItem('pkce_code_verifier')
   const clientId = sessionStorage.getItem('oauth2_client_id') || 'spa-public-client'
+  const clientSecret = sessionStorage.getItem('oauth2_client_secret') || ''
   const pkceMode = sessionStorage.getItem('pkce_mode') || 'required'
   const redirectUri = `${window.location.origin}${route.path}`
 
@@ -114,6 +115,9 @@ onMounted(async () => {
 
     if (pkceMode === 'required') {
       tokenRequestBody.code_verifier = codeVerifier
+    }
+    if (clientSecret) {
+      tokenRequestBody.client_secret = clientSecret
     }
 
     const { data } = await oauth2Api.exchangeCode({

@@ -18,6 +18,7 @@ export function getAuthServerOrigin() {
 
 export function prepareOAuth2Redirect({
   clientId,
+  clientSecret = '',
   usePkce,
   scenario,
   returnTo,
@@ -31,6 +32,13 @@ export function prepareOAuth2Redirect({
   sessionStorage.setItem('pkce_mode', usePkce ? 'required' : 'disabled')
   sessionStorage.setItem('oauth2_demo_scenario', scenario)
   sessionStorage.setItem('oauth2_client_id', clientId)
+  if (clientSecret) {
+    sessionStorage.setItem('oauth2_client_secret', clientSecret)
+    sessionStorage.setItem('oauth2_active_client_secret', clientSecret)
+  } else {
+    sessionStorage.removeItem('oauth2_client_secret')
+    sessionStorage.removeItem('oauth2_active_client_secret')
+  }
   sessionStorage.setItem('oauth2_return_to', returnTo)
   sessionStorage.setItem('oauth2_sync_channel', syncChannel)
   sessionStorage.setItem('oauth2_sync_target', syncTarget)
@@ -57,6 +65,7 @@ export function clearOAuth2RedirectContext() {
   sessionStorage.removeItem('pkce_code_verifier')
   sessionStorage.removeItem('pkce_mode')
   sessionStorage.removeItem('oauth2_demo_scenario')
+  sessionStorage.removeItem('oauth2_client_secret')
   sessionStorage.removeItem('oauth2_sync_channel')
   sessionStorage.removeItem('oauth2_sync_target')
 }
@@ -140,7 +149,7 @@ export function createOAuth2SyncListener(syncChannel, onPayload) {
  * @param {string} options.scenario - 场景标识
  * @param {string} options.returnTo - 授权后返回的路径
  */
-export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = true, scenario = 'default', returnTo = '/pkce', openInNewWindow = false, syncChannel = DEFAULT_OAUTH2_SYNC_CHANNEL, syncTarget = '' }) {
+export async function startAuthorizationCodeFlow({ clientId, clientSecret = '', scope, usePkce = true, scenario = 'default', returnTo = '/pkce', openInNewWindow = false, syncChannel = DEFAULT_OAUTH2_SYNC_CHANNEL, syncTarget = '' }) {
   const frontendOrigin = window.location.origin
   const redirectUri = `${frontendOrigin}/callback`
   const state = generateRandomString(32)
@@ -155,6 +164,7 @@ export async function startAuthorizationCodeFlow({ clientId, scope, usePkce = tr
 
   prepareOAuth2Redirect({
     clientId,
+    clientSecret,
     usePkce,
     scenario,
     returnTo,
