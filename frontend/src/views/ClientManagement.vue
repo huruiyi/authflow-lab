@@ -661,6 +661,20 @@ function removePostLogoutUri(idx) { form.postLogoutRedirectUris.splice(idx, 1) }
   color: #fff;
   font-weight: 600;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+:deep(.custom-table .el-table__fixed-right .actions-col-header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+:deep(.custom-table .el-table__fixed-right .actions-col-header .cell) {
+  color: #fff !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 :deep(.el-table td) {

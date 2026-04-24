@@ -41,16 +41,19 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { handleOAuth2Error, getAuthServerOrigin, prepareOAuth2Redirect } from '../utils/oauth2Helper'
+import { handleOAuth2Error, getAuthServerOrigin, prepareOAuth2Redirect, createOAuth2SyncListener } from '../utils/oauth2Helper'
+import { saveTokens, getTokenState } from '../utils/tokenHelper'
 import { generatePkcePair, generateRandomString } from '../composables/pkce'
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
 const oauth2SyncChannel = 'oauth2-token-sync-par'
+const tokenState = reactive(getTokenState())
+let disposeParSync = null
 
 const parForm = reactive({
   clientId: 'spa-par-client',
@@ -75,7 +78,8 @@ async function startParFlow() {
       usePkce: true,
       scenario: 'par',
       returnTo: '/par',
-      syncChannel: oauth2SyncChannel
+      syncChannel: oauth2SyncChannel,
+      syncTarget: 'par'
     }, {
       state,
       codeVerifier: pkcePair.codeVerifier
@@ -113,6 +117,34 @@ async function startParFlow() {
     result.value = handleOAuth2Error(e, ElMessage.error)
   }
 }
+
+function applyParSyncedTokens(payload) {
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  result.value = {
+    operation: 'oauth2_callback_sync_par',
+    message: 'Demo 7 已同步新窗口授权结果。',
+    client_id: payload.client_id || '',
+    access_token: payload.access_token || '',
+    id_token: payload.id_token || '',
+    refresh_token: payload.refresh_token || '',
+    scope: payload.scope || '',
+    expires_in: payload.expires_in || 0,
+    token_type: 'Bearer',
+    request_uri: parState.requestUri || '',
+    request_uri_expires_in: parState.expiresIn || 0
+  }
+  ElMessage.success('Demo 7 Token 已同步到当前页面')
+}
+
+onMounted(() => {
+  Object.assign(tokenState, getTokenState())
+  disposeParSync = createOAuth2SyncListener(oauth2SyncChannel, applyParSyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeParSync?.()
+})
 
 function writeParSummary() {
   result.value = {

@@ -55,13 +55,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
-import { startAuthorizationCodeFlow } from '../utils/oauth2Helper'
+import { startAuthorizationCodeFlow, createOAuth2SyncListener } from '../utils/oauth2Helper'
+import { saveTokens, getTokenState } from '../utils/tokenHelper'
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
+const tokenState = reactive(getTokenState())
+const noPkceSyncChannel = 'oauth2-token-sync-no-pkce'
+let disposeNoPkceSync = null
 
 const noPkceComparisonRows = computed(() => [
   {
@@ -97,7 +101,10 @@ async function startPkceControlFlow() {
     scope: 'openid profile email read write',
     usePkce: true,
     scenario: 'with-pkce-control',
-    returnTo: '/no-pkce'
+    returnTo: '/no-pkce',
+    openInNewWindow: true,
+    syncChannel: noPkceSyncChannel,
+    syncTarget: 'no-pkce'
   })
 }
 
@@ -112,9 +119,38 @@ async function startNoPkceFlow() {
     scope: 'openid profile email read write',
     usePkce: false,
     scenario: 'without-pkce-control',
-    returnTo: '/no-pkce'
+    returnTo: '/no-pkce',
+    openInNewWindow: true,
+    syncChannel: noPkceSyncChannel,
+    syncTarget: 'no-pkce'
   })
 }
+
+function applyNoPkceSyncedTokens(payload) {
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  result.value = {
+    operation: 'oauth2_callback_sync_no_pkce',
+    message: 'Demo 4 已同步新窗口授权结果。',
+    client_id: payload.client_id,
+    access_token: payload.access_token || '',
+    id_token: payload.id_token || '',
+    refresh_token: payload.refresh_token || '',
+    scope: payload.scope,
+    expires_in: payload.expires_in,
+    token_type: 'Bearer'
+  }
+  ElMessage.success('Demo 4 Token 已同步到当前页面')
+}
+
+onMounted(() => {
+  Object.assign(tokenState, getTokenState())
+  disposeNoPkceSync = createOAuth2SyncListener(noPkceSyncChannel, applyNoPkceSyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeNoPkceSync?.()
+})
 
 function writeNoPkceSummary() {
   result.value = {

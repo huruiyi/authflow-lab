@@ -864,14 +864,17 @@ import {
   splitScopeString,
   startAuthorizationCodeFlow as startAuthorizationCodeFlowHelper
 } from '../utils/oauth2Helper'
+import { generatePkcePair, generateRandomString } from '../composables/pkce'
 import { getTokenState, saveTokens, clearTokens } from '../utils/tokenHelper'
 import TokenDisplay from '../components/TokenDisplay.vue'
 
 const oauth2SyncChannel = 'oauth2-token-sync-flows-demo'
 const claimsSyncChannel = 'oauth2-token-sync-flows-demo-claims'
+const parSyncChannel = 'oauth2-token-sync-flows-demo-par'
 const oauth2SyncChannelOpaque = 'oauth2-token-sync-flows-demo-opaque'
 let disposeTokenSync = null
 let disposeClaimsSync = null
+let disposeParSync = null
 let disposeOpaqueSync = null
 
 const authServerOrigin = getAuthServerOrigin()
@@ -1324,6 +1327,64 @@ function applySyncedTokens(payload) {
     return
   }
 
+  if (payload?.syncTarget === 'no-pkce') {
+    saveTokens(payload)
+    syncTokenStateFromStorage()
+    result.value = {
+      operation: 'oauth2_callback_sync_no_pkce',
+      message: 'Demo 4 已同步新窗口授权结果。',
+      client_id: payload.client_id,
+      access_token: payload.access_token || '',
+      id_token: payload.id_token || '',
+      refresh_token: payload.refresh_token || '',
+      scope: payload.scope || '',
+      expires_in: payload.expires_in || 0,
+      token_type: 'Bearer'
+    }
+    ElMessage.success('Demo 4 Token 已同步')
+    return
+  }
+
+  if (payload?.syncTarget === 'dynamic-client') {
+    saveTokens(payload)
+    syncTokenStateFromStorage()
+    result.value = {
+      operation: 'oauth2_callback_sync_dynamic_client',
+      message: 'Demo 6 已同步新窗口授权结果。',
+      registeredClientId: dynamicClientState.id || '',
+      dynamicClientId: dynamicClientState.clientId || payload.client_id || '',
+      client_id: payload.client_id || '',
+      access_token: payload.access_token || '',
+      id_token: payload.id_token || '',
+      refresh_token: payload.refresh_token || '',
+      scope: payload.scope || '',
+      expires_in: payload.expires_in || 0,
+      token_type: 'Bearer'
+    }
+    ElMessage.success('Demo 6 Token 已同步')
+    return
+  }
+
+  if (payload?.syncTarget === 'par') {
+    saveTokens(payload)
+    syncTokenStateFromStorage()
+    result.value = {
+      operation: 'oauth2_callback_sync_par',
+      message: 'Demo 7 已同步新窗口授权结果。',
+      client_id: payload.client_id || '',
+      access_token: payload.access_token || '',
+      id_token: payload.id_token || '',
+      refresh_token: payload.refresh_token || '',
+      scope: payload.scope || '',
+      expires_in: payload.expires_in || 0,
+      token_type: 'Bearer',
+      request_uri: parState.requestUri || '',
+      request_uri_expires_in: parState.expiresIn || 0
+    }
+    ElMessage.success('Demo 7 Token 已同步')
+    return
+  }
+
   saveTokens(payload)
   syncTokenStateFromStorage()
   loadTokenLifecycleFromCurrentSession()
@@ -1345,6 +1406,7 @@ onMounted(() => {
   syncTokenStateFromStorage()
   disposeTokenSync = createOAuth2SyncListener(oauth2SyncChannel, applySyncedTokens)
   disposeClaimsSync = createOAuth2SyncListener(claimsSyncChannel, applySyncedTokens)
+  disposeParSync = createOAuth2SyncListener(parSyncChannel, applySyncedTokens)
   disposeOpaqueSync = createOAuth2SyncListener(oauth2SyncChannelOpaque, handleOpaqueSyncTokens)
   lifecycleTimer = window.setInterval(() => {
     nowTimestamp.value = Date.now()
@@ -1356,6 +1418,7 @@ onBeforeUnmount(() => {
   devicePollingAborted = true
   disposeTokenSync?.()
   disposeClaimsSync?.()
+  disposeParSync?.()
   disposeOpaqueSync?.()
   if (lifecycleTimer) {
     window.clearInterval(lifecycleTimer)
@@ -1450,7 +1513,11 @@ async function startPkceControlFlow() {
     clientId: 'spa-public-client',
     scope: 'openid profile email read write',
     usePkce: true,
-    scenario: 'with-pkce-control'
+    scenario: 'with-pkce-control',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel,
+    syncTarget: 'no-pkce',
+    returnTo: '/flows-demo?tab=no-pkce'
   })
 }
 
@@ -1464,7 +1531,11 @@ async function startNoPkceFlow() {
     clientId: 'spa-public-client',
     scope: 'openid profile email read write',
     usePkce: false,
-    scenario: 'without-pkce-control'
+    scenario: 'without-pkce-control',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel,
+    syncTarget: 'no-pkce',
+    returnTo: '/flows-demo?tab=no-pkce'
   })
 }
 
@@ -1558,7 +1629,11 @@ async function startDynamicClientAuthorization() {
     clientId: dynamicClientState.clientId,
     scope: dynamicClientForm.scope,
     usePkce: true,
-    scenario: 'dynamic-client-registration'
+    scenario: 'dynamic-client-registration',
+    openInNewWindow: true,
+    syncChannel: oauth2SyncChannel,
+    syncTarget: 'dynamic-client',
+    returnTo: '/flows-demo?tab=dynamic-client'
   })
 }
 
@@ -1594,8 +1669,9 @@ async function startParFlow() {
       clientId: parForm.clientId,
       usePkce: true,
       scenario: 'par',
-      returnTo: '/flows?tab=par',
-      syncChannel: oauth2SyncChannel
+      returnTo: '/flows-demo?tab=par',
+      syncChannel: parSyncChannel,
+      syncTarget: 'par'
     }, {
       state,
       codeVerifier: pkcePair.codeVerifier

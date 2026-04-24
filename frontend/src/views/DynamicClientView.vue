@@ -53,14 +53,18 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import OAuth2Layout from '../components/OAuth2Layout.vue'
 import ApiResultBox from '../components/ApiResultBox.vue'
 import { oauth2Api } from '../api/oauth2'
-import { startAuthorizationCodeFlow, handleOAuth2Error, buildDynamicClientId, splitScopeString } from '../utils/oauth2Helper'
+import { startAuthorizationCodeFlow, handleOAuth2Error, buildDynamicClientId, splitScopeString, createOAuth2SyncListener } from '../utils/oauth2Helper'
+import { saveTokens, getTokenState } from '../utils/tokenHelper'
 
 const result = ref({ message: '点击上方按钮开始体验 OAuth2 场景。' })
+const tokenState = reactive(getTokenState())
+const dynamicClientSyncChannel = 'oauth2-token-sync-dynamic-client'
+let disposeDynamicClientSync = null
 
 const dynamicClientForm = reactive({
   clientId: buildDynamicClientId(),
@@ -122,9 +126,40 @@ async function startDynamicClientAuthorization() {
     scope: dynamicClientForm.scope,
     usePkce: true,
     scenario: 'dynamic-client-registration',
-    returnTo: '/dynamic-client'
+    returnTo: '/dynamic-client',
+    openInNewWindow: true,
+    syncChannel: dynamicClientSyncChannel,
+    syncTarget: 'dynamic-client'
   })
 }
+
+function applyDynamicClientSyncedTokens(payload) {
+  saveTokens(payload)
+  Object.assign(tokenState, getTokenState())
+  result.value = {
+    operation: 'oauth2_callback_sync_dynamic_client',
+    message: 'Demo 6 已同步新窗口授权结果。',
+    registeredClientId: dynamicClientState.id || '',
+    dynamicClientId: dynamicClientState.clientId || payload.client_id || '',
+    client_id: payload.client_id || '',
+    access_token: payload.access_token || '',
+    id_token: payload.id_token || '',
+    refresh_token: payload.refresh_token || '',
+    scope: payload.scope || '',
+    expires_in: payload.expires_in || 0,
+    token_type: 'Bearer'
+  }
+  ElMessage.success('Demo 6 Token 已同步到当前页面')
+}
+
+onMounted(() => {
+  Object.assign(tokenState, getTokenState())
+  disposeDynamicClientSync = createOAuth2SyncListener(dynamicClientSyncChannel, applyDynamicClientSyncedTokens)
+})
+
+onBeforeUnmount(() => {
+  disposeDynamicClientSync?.()
+})
 
 async function deleteDynamicClient() {
   if (!dynamicClientState.id) {
